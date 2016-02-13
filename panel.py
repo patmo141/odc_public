@@ -1,6 +1,5 @@
 import bpy
-import odc
-
+import  odc_public
 class SCENE_UL_odc_teeth(bpy.types.UIList):
     # The draw_item function is called for each item of the collection that is visible in the list.
     #   data is the RNA object containing the collection,

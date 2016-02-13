@@ -12,8 +12,8 @@ import blf
 import math
 import time
 import os
-import odc.odcmenus.menu_utils as menu_utils
-import odc.odcmenus.button_data as button_data
+import odc_public.odcmenus.menu_utils as menu_utils
+import odc_public.odcmenus.button_data as button_data
 from bpy_extras import view3d_utils 
 
 

@@ -12,8 +12,8 @@
 # along with this program; if not, write to the Free Software Foundation,
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
-import odc
-from odc import odcutils, load_post_method
+import odc_public
+from  odc_public import odcutils, load_post_method
 
 '''
 Template for classes and properties from Cycles Addon
