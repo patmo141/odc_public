@@ -16,7 +16,7 @@
 #import odc_public
 #from  odc_public import odcutils, load_post_method
 
-from . import odcutils, load_post_method
+#from . import odcutils, load_post_method
 
 '''
 Template for classes and properties from Cycles Addon
