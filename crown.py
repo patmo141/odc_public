@@ -12,6 +12,7 @@ from bpy_extras import view3d_utils
 #from . import classes
 
 import odcutils, crown_methods, full_arch_methods, bgl_utils, classes
+from odcutils import get_settings
 import odcmenus.menu_utils as menu_utils
 import odcmenus.button_data as button_data
 from curve import CurveDataManager
@@ -108,6 +109,7 @@ class OPENDENTAL_OT_set_as_prep(bpy.types.Operator):
     abutment = bpy.props.BoolProperty(name = "abutment", default = False)
     
     def execute(self, context):
+        settings = get_settings()
         layers_copy = [layer for layer in context.scene.layers]
         context.scene.layers[0] = True
         
@@ -179,13 +181,13 @@ class OPENDENTAL_OT_set_as_prep(bpy.types.Operator):
         bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY')
         
         #TODO: make this dependent on "Parallel or Linear" work flow
-        if context.user_preferences.addons['odc_public'].preferences.workflow == '0':
+        if settings.workflow == '0':
             Master.hide = True
         
             #look down on prep
             bpy.ops.view3d.viewnumpad(type='TOP', align_active = True)
             
-        if context.user_preferences.addons['odc_public'].preferences.workflow in {'1','2'}:
+        if settings.workflow in {'1','2'}:
             sce.objects.active = act_ob
             act_ob.select = True
             bpy.ops.object.mode_set(mode='EDIT')
@@ -413,7 +415,8 @@ class OPENDENTAL_OT_insertion_axis(bpy.types.Operator):
         return {'RUNNING_MODAL'}
      
     def invoke(self, context, event):
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg = settings.debug
         odcutils.scene_verification(context.scene, debug = dbg)
         context.scene.layers[0] = True
         
@@ -478,8 +481,9 @@ class CBGetCrownForm(bpy.types.Operator):
         
     def invoke(self, context, event): 
         self.objs.clear()
+        settings = get_settings()
         #here we grab the asset library from the addon prefs
-        libpath = context.user_preferences.addons['odc_public'].preferences.tooth_lib
+        libpath = settings.tooth_lib
         
         #a list of all objects in the asset library
         assets = odcutils.obj_list_from_lib(libpath, exclude = '_')
@@ -494,6 +498,7 @@ class CBGetCrownForm(bpy.types.Operator):
         #TODO:...make this work for multiple teeth
         #TODO:...incorporate with teeth on curve
         sce = context.scene
+        settings = get_settings()
         tooth_candidates = odcutils.tooth_selection(context)
         if tooth_candidates:
             tooth = tooth_candidates[0]
@@ -508,7 +513,7 @@ class CBGetCrownForm(bpy.types.Operator):
             old_ob.user_clear()
             bpy.data.objects.remove(old_ob)
             
-        odcutils.obj_from_lib(context.user_preferences.addons['odc_public'].preferences.tooth_lib,self.ob_list)
+        odcutils.obj_from_lib(settings.tooth_lib,self.ob_list)
         
         ob = bpy.data.objects[self.ob_list]
         sce.objects.link(ob)
@@ -610,7 +615,8 @@ class OPENDENTAL_OT_seat_to_margin(bpy.types.Operator):
     
     
     def execute(self,context):
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg = settings.debug
         odcutils.layer_management(context.scene.odc_teeth, debug = False)
         
         layers_copy = [layer for layer in context.scene.layers]
@@ -684,7 +690,8 @@ class OPENDENTAL_OT_calculate_inside(bpy.types.Operator):
         return {'RUNNING_MODAL'}
     
     def execute(self, context):
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg = settings.debug
         if bpy.context.mode != 'OBJECT':
             bpy.ops.object.mode_set(mode='OBJECT')
         
@@ -736,7 +743,8 @@ class OPENDENTAL_OT_crown_cervical_convergence(bpy.types.Operator):
     #def draw(self,context): #TODO: draw code for cervical convergence
     
     def execute(self, context):
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg = settings.debug
         tooth = odcutils.tooth_selection(context)[0]
         
         layers_copy = [layer for layer in context.scene.layers]
@@ -773,8 +781,8 @@ class OPENDENTAL_make_solid_restoration(bpy.types.Operator):
         return condition_1 and condition_2
     
     def execute(self,context):
-        
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg = settings.debug
         teeth = odcutils.tooth_selection(context)
         layers_copy = [layer for layer in context.scene.layers]
         context.scene.layers[0] = True
@@ -926,8 +934,8 @@ class OPENDENTAL_OT_prep_from_crown(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         if not hasattr(context.scene, 'odc_props'): return False
-        
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg = settings.debug
         if len(context.scene.odc_teeth) and len(odcutils.tooth_selection(context)): 
             return True
         
@@ -944,7 +952,8 @@ class OPENDENTAL_OT_prep_from_crown(bpy.types.Operator):
         #restoration exists and is in scene
         
     def execute(self, context):
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg = settings.debug
         teeth = odcutils.tooth_selection(context)
         
         layers_copy = [layer for layer in context.scene.layers]
@@ -1065,7 +1074,8 @@ class OPENDENTAL_OT_pointic_from_crown(bpy.types.Operator):
     
     @classmethod
     def poll(cls, context):
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg = settings.debug
         #modes we may want to use this.
         teeth = odcutils.tooth_selection(context)
         
@@ -1085,7 +1095,8 @@ class OPENDENTAL_OT_pointic_from_crown(bpy.types.Operator):
         #restoration exists and is in scene
         
     def execute(self, context):
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg = settings.debug
         teeth = odcutils.tooth_selection(context)
         
         [ob_sets, tool_sets, space_sets] = odcutils.scene_preserv(context, debug=dbg)
@@ -1374,17 +1385,18 @@ class OPENDENTAL_OT_teeth_arch(bpy.types.Operator):
         context.window_manager.invoke_props_dialog(self, width=300) 
         return {'RUNNING_MODAL'}       
     def execute(self, context):
+        settings = get_settings()
         layers_copy = [layer for layer in context.scene.layers]
         context.scene.layers[0] = True
         
         ob = context.object
         quad = self.arch_types[int(self.arch_type)]
         shift = self.shifts[int(self.shift)]
+        settings = get_settings()
+        dbg = settings.debug
         
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
         
-        
-        full_arch_methods.teeth_to_curve(context, ob, quad,context.user_preferences.addons['odc_public'].preferences.tooth_lib, 
+        full_arch_methods.teeth_to_curve(context, ob, quad,settings.tooth_lib, 
                                     shift = shift,
                                     limit = self.limit,
                                     link = self.link, 

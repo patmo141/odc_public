@@ -24,6 +24,26 @@ from bpy_extras.mesh_utils import edge_loops_from_edges
 from mathutils.geometry import intersect_point_line
 
 
+#Borrowed from retopoflow @CGCookie, Jonathan Wiliamson, Jon Denning, Patrick Moore
+def get_settings():
+    if not get_settings.cached_settings:
+        addons = bpy.context.user_preferences.addons
+        #frame = inspect.currentframe()
+        #frame.f_code.co_filename
+        folderpath = os.path.dirname(os.path.abspath(__file__))
+        while folderpath:
+            folderpath,foldername = os.path.split(folderpath)
+            if foldername in {'lib','addons'}: continue
+            if foldername in addons: break
+        else:
+            assert False, 'Could not find non-"lib" folder'
+        
+        get_settings.cached_settings = addons[foldername].preferences
+   
+    return get_settings.cached_settings
+get_settings.cached_settings = None
+
+
 #global universal_intntl
 universal_intntl = {}
 #global intntl_universal
@@ -578,9 +598,9 @@ def splint_selction(context):
     '''
     sce = context.scene
     splint = None
-
-    b = context.user_preferences.addons['odc_public'].preferences.behavior
-    behave_mode = context.user_preferences.addons['odc_public'].preferences.behavior_modes[int(b)]
+    settings = get_settings()
+    b = settings.behavior
+    behave_mode = settings.behavior_modes[int(b)]
     
     if behave_mode == 'LIST':
         #choose just one tooth in the list
@@ -611,8 +631,9 @@ def tooth_selection(context):
     if not hasattr(sce, "odc_props"):
         print('addon may be broken')
         return selected_items
-    b = context.user_preferences.addons['odc_public'].preferences.behavior
-    behave_mode = context.user_preferences.addons['odc_public'].preferences.behavior_modes[int(b)]
+    settings = get_settings()
+    b = settings.behavior
+    behave_mode = settings.behavior_modes[int(b)]
     
     if behave_mode == 'LIST' and len(context.scene.odc_teeth):
         #choose just one tooth in the list
@@ -894,7 +915,8 @@ def material_management(context, odc_items, force = False, debug = False):
         print('user settings -> file -> uncheck Relative Paths')
         return
     
-    fname = context.user_preferences.addons['odc_public'].preferences.mat_lib
+    settings = get_settings()
+    fname = settings.mat_lib
     if not os.path.isfile(fname):
         print(fname)
         print('cant find material dictionary, please see user preferences')
@@ -918,7 +940,7 @@ def material_management(context, odc_items, force = False, debug = False):
                     ob = bpy.data.objects.get(item.get(keys[n]))
                     if ob and not len(ob.material_slots):
                         if not bpy.data.materials.get(material_dictionary[keys[n]]):
-                            mat_from_lib(context.user_preferences.addons['odc_public'].preferences.mat_lib, material_dictionary[keys[n]])
+                            mat_from_lib(settings.mat_lib, material_dictionary[keys[n]])
                         context.scene.objects.active = ob
                         was_hidden = ob.hide
                         if was_hidden:

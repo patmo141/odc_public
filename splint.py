@@ -8,6 +8,7 @@ import blf
 
 #from . 
 import odcutils
+from odcutils import get_settings
 import bgl_utils
 import common_drawing
 import common_utilities
@@ -33,7 +34,8 @@ class OPENDENTAL_OT_link_selection_splint(bpy.types.Operator):
         return condition_1 or condition_2
     
     def execute(self,context):
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg =settings.debug
         n = context.scene.odc_splint_index
         odc_splint = context.scene.odc_splints[n]
         full_arch_methods.link_selection_to_splint(context, odc_splint, debug=dbg)
@@ -58,7 +60,8 @@ class OPENDENTAL_OT_splint_bone(bpy.types.Operator):
         return condition_1
     
     def execute(self,context):
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg =settings.debug
         n = context.scene.odc_splint_index
         
         if len(context.scene.odc_splints) != 0:
@@ -91,7 +94,8 @@ class OPENDENTAL_OT_splint_model(bpy.types.Operator):
         return condition_1
     
     def execute(self,context):
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg =settings.debug
         n = context.scene.odc_splint_index
         
         if len(context.scene.odc_splints) != 0:
@@ -226,7 +230,8 @@ class OPENDENTAL_OT_splint_subtract_holes(bpy.types.Operator):
         return True
     
     def execute(self,context):
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg =settings.debug
         n = context.scene.odc_splint_index
         odc_splint = context.scene.odc_splints[n]
         
@@ -314,7 +319,8 @@ class OPENDENTAL_OT_splint_subtract_sleeves(bpy.types.Operator):
         return True
     
     def execute(self,context):
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg =settings.debug
         n = context.scene.odc_splint_index
         odc_splint = context.scene.odc_splints[n]
         layers_copy = [layer for layer in context.scene.layers]
@@ -407,7 +413,8 @@ class OPENDENTAL_OT_splint_add_guides(bpy.types.Operator):
         return True
     
     def execute(self,context):
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg = settings.debug
         n = context.scene.odc_splint_index
         odc_splint = context.scene.odc_splints[n]
         
@@ -1127,7 +1134,8 @@ class OPENDENTAL_OT_survey_model(bpy.types.Operator):
         return  C0 and C1 and C2
 
     def execute(self, context):
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg = settings.debug
         ob = context.object
         view = context.space_data.region_3d.view_rotation * Vector((0,0,1))
         odcutils.silouette_brute_force(context, ob, view, self.world, self.smooth, debug = dbg)
@@ -1148,7 +1156,8 @@ class OPENDENTAL_OT_splint_bezier_model(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         if len(context.scene.odc_splints):
-            dbg = context.user_preferences.addons['odc_public'].preferences.debug
+            settings = get_settings()
+            dbg = settings.debug
             b = context.user_preferences.addons['odc_public'].preferences.behavior
             behave_mode = context.user_preferences.addons['odc_public'].preferences.behavior_modes[int(b)]
             if  behave_mode in {'ACTIVE','ACTIVE_SELECTED'} and dbg > 2:
@@ -1168,14 +1177,16 @@ class OPENDENTAL_OT_splint_bezier_model(bpy.types.Operator):
     def execute(self, context):
         
             
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg = settings.debug
         
         #first, ensure all models are present and not deleted etc
         odcutils.scene_verification(context.scene, debug = dbg)      
         b = context.user_preferences.addons['odc_public'].preferences.behavior
         behave_mode = context.user_preferences.addons['odc_public'].preferences.behavior_modes[int(b)]
         
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug    
+        settings = get_settings()
+        dbg = settings.debug    
         [ob_sets, tool_sets, space_sets] = odcutils.scene_preserv(context, debug=dbg)
         
         #this is sneaky way of letting me test different things

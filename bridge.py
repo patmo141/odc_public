@@ -8,6 +8,7 @@ import bpy
 import bmesh
 from bpy.props import BoolProperty
 import odcutils, mesh_cut, bridge_methods, bgl_utils, full_arch_methods
+from odcutils import get_settings
 import math
 import time
 
@@ -26,7 +27,8 @@ class OPENDENTAL_OT_bridge_from_selected(bpy.types.Operator):
         return condition_1
     
     def execute(self,context):
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg = settings.debug
         bridge_methods.bridge_from_selection(context, debug=dbg)
         
         return {'FINISHED'}
@@ -51,7 +53,8 @@ class OPENDENTAL_OT_bridge_prebridge(bpy.types.Operator):
         else:
             return False
     def execute(self,context):
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg = settings.debug
         
         layers_copy = [layer for layer in context.scene.layers]
         context.scene.layers[0] = True
@@ -88,7 +91,8 @@ class OPENDENTAL_OT_bridge_boolean(bpy.types.Operator):
         else:
             return False
     def execute(self,context):
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg = settings.debug
         odc_bridge = bridge_methods.active_spanning_restoration(context)[0]
         
         layers_copy = [layer for layer in context.scene.layers]
@@ -192,7 +196,8 @@ class OPENDENTAL_OT_solid_bridge(bpy.types.Operator):
         else:
             return False
     def execute(self,context):
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg = settings.debug
         odc_bridge = bridge_methods.active_spanning_restoration(context)[0]
         sce = context.scene
         Bridge = bpy.data.objects.get(odc_bridge.bridge)
@@ -313,7 +318,8 @@ class OPENDENTAL_OT_bridge_keep_arch_plan(bpy.types.Operator):
     
     def execute(self,context):
         curve = context.object
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg = settings.debug
         full_arch_methods.keep_arch_plan(context, curve,debug = dbg)
         
         return {'FINISHED'}
@@ -459,7 +465,8 @@ class OPENDENTAL_OT_bridge_individual(bpy.types.Operator):
             return {'CANCELLED'}
             
     def execute(self,context):
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg = settings.debug
         Bridge = bpy.data.objects[self.odc_bridge.bridge]
         
         mes_tooth_distal_connector = self.b + self.b_group
@@ -590,7 +597,8 @@ class OPENDENTAL_OT_ClothFillTray(bpy.types.Operator):
         loop_obj = context.object
         oct = self.oct
         smooth = self.smooth
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg = settings.debug
         full_arch_methods.cloth_fill_main(context, loop_obj, oct, smooth, debug = dbg)
            
         return {'FINISHED'}

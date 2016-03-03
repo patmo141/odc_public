@@ -13,6 +13,7 @@ from mathutils import Vector, Matrix
 
 #from . 
 import odcutils
+from odcutils import get_settings
 #from . 
 import implant_utils
 
@@ -92,7 +93,8 @@ class OPENDENTAL_OT_implant_from_contour(bpy.types.Operator):
     def invoke(self,context,event):
         self.objs.clear()
         #here we grab the asset library from the addon prefs
-        libpath = context.user_preferences.addons['odc_public'].preferences.imp_lib
+        settings = get_settings()
+        libpath = settings.imp_lib
         assets = odcutils.obj_list_from_lib(libpath, exclude = '_')
         for asset_object_name in assets:
             self.objs.add().name = asset_object_name
@@ -101,7 +103,8 @@ class OPENDENTAL_OT_implant_from_contour(bpy.types.Operator):
         return {'FINISHED'}
     
     def execute(self,context):
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg = settings.debug
         #TODO: Scene Preservation recording
         teeth = odcutils.tooth_selection(context)
         sce = bpy.context.scene
@@ -168,7 +171,8 @@ class OPENDENTAL_OT_place_implant(bpy.types.Operator):
         
     def invoke(self, context, event): 
         self.objs.clear()
-        libpath = context.user_preferences.addons['odc_public'].preferences.imp_lib
+        settings = get_settings()
+        libpath = settings.imp_lib
         assets = odcutils.obj_list_from_lib(libpath, exclude = '_')
        
         for asset_object_name in assets:
@@ -178,7 +182,8 @@ class OPENDENTAL_OT_place_implant(bpy.types.Operator):
         return {'FINISHED'}
     
     def execute(self, context):
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg = settings.preferences.debug
         #if bpy.context.mode != 'OBJECT':
         #    bpy.ops.object.mode_set(mode = 'OBJECT')
         
@@ -236,7 +241,7 @@ class OPENDENTAL_OT_place_implant(bpy.types.Operator):
                 current_obs = [ob.name for ob in bpy.data.objects]
                 
                 #link the new implant from the library
-                odcutils.obj_from_lib(context.user_preferences.addons['odc_public'].preferences.imp_lib,self.imp)
+                odcutils.obj_from_lib(settings.imp_lib,self.imp)
                 
                 #this is slightly more robust than trusting we don't have duplicate names.
                 for ob in bpy.data.objects:
@@ -251,10 +256,10 @@ class OPENDENTAL_OT_place_implant(bpy.types.Operator):
                     current_obs = [ob.name for ob in bpy.data.objects]
                     
                     inc = self.imp + '_'
-                    hardware_list = odcutils.obj_list_from_lib(context.user_preferences.addons['odc_public'].preferences.imp_lib, include = inc)
+                    hardware_list = odcutils.obj_list_from_lib(settings.imp_lib, include = inc)
                     print(hardware_list)
                     for ob in hardware_list:
-                        odcutils.obj_from_lib(context.user_preferences.addons['odc_public'].preferences.imp_lib,ob)
+                        odcutils.obj_from_lib(settings.imp_lib,ob)
                 
                     for ob in bpy.data.objects:
                         if ob.name not in current_obs:
@@ -309,7 +314,8 @@ class OPENDENTAL_OT_place_sleeve(bpy.types.Operator):
         
     def invoke(self, context, event): 
         self.objs.clear()
-        libpath = context.user_preferences.addons['odc_public'].preferences.drill_lib
+        settings = get_settings()
+        libpath = settings.drill_lib
         assets = odcutils.obj_list_from_lib(libpath, exclude = 'Drill')
        
         for asset_object_name in assets:
@@ -319,7 +325,8 @@ class OPENDENTAL_OT_place_sleeve(bpy.types.Operator):
         return {'FINISHED'}
     
     def execute(self, context):
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg = settings.debug
         #if bpy.context.mode != 'OBJECT':
         #    bpy.ops.object.mode_set(mode = 'OBJECT')
         
@@ -352,7 +359,7 @@ class OPENDENTAL_OT_place_sleeve(bpy.types.Operator):
                 current_obs = [ob.name for ob in bpy.data.objects]
                 
                 #link the new implant from the library
-                odcutils.obj_from_lib(context.user_preferences.addons['odc_public'].preferences.drill_lib,self.drill)
+                odcutils.obj_from_lib(settings.drill_lib,self.drill)
                 
                 #this is slightly more robust than trusting we don't have duplicate names.
                 for ob in bpy.data.objects:
@@ -409,7 +416,8 @@ class OPENDENTAL_OT_place_drill(bpy.types.Operator):
         
     def invoke(self, context, event): 
         self.objs.clear()
-        libpath = context.user_preferences.addons['odc_public'].preferences.drill_lib
+        settings = get_settings()
+        libpath = settings.drill_lib
         assets = odcutils.obj_list_from_lib(libpath, include = 'Drill', exclude = 'Sleeve')
        
         for asset_object_name in assets:
@@ -419,7 +427,8 @@ class OPENDENTAL_OT_place_drill(bpy.types.Operator):
         return {'FINISHED'}
     
     def execute(self, context):
-        dbg = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg = settings.debug
         #if bpy.context.mode != 'OBJECT':
         #    bpy.ops.object.mode_set(mode = 'OBJECT')
         
@@ -453,7 +462,8 @@ class OPENDENTAL_OT_place_drill(bpy.types.Operator):
                 current_obs = [ob.name for ob in bpy.data.objects]
                 
                 #link the new implant from the library
-                odcutils.obj_from_lib(context.user_preferences.addons['odc_public'].preferences.drill_lib,self.drill)
+                settings = get_settings()
+                odcutils.obj_from_lib(settings.drill_lib,self.drill)
                 
                 #this is slightly more robust than trusting we don't have duplicate names.
                 for ob in bpy.data.objects:
@@ -505,7 +515,8 @@ class OPENDENTAL_OT_implant_guide_cylinder(bpy.types.Operator):
         return {'RUNNING_MODAL'}
     
     def execute(self,context):
-        dbg  = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg  = settings.debug
         odcutils.scene_verification(context.scene, debug = dbg)
         spaces = odcutils.implant_selection(context)
         layers_copy = [layer for layer in context.scene.layers]
@@ -549,7 +560,8 @@ class OPENDENTAL_OT_implant_inner_cylinder(bpy.types.Operator):
     thickness = bpy.props.FloatProperty(name="Cylinder Diameter", description="diameter of the hole", default=5, min=1, max=7, step=5, precision=1, options={'ANIMATABLE'})
 
     def execute(self,context):
-        dbg  = context.user_preferences.addons['odc_public'].preferences.debug
+        settings = get_settings()
+        dbg  = settings.debug
         odcutils.scene_verification(context.scene, debug = dbg)
         spaces = odcutils.implant_selection(context)
         layers_copy = [layer for layer in context.scene.layers]
@@ -590,8 +602,9 @@ def update_link_operators():
     global lib_teeth
     lib_teeth_enum = []
     lib_teeth = []
-    dbg = bpy.context.user_preferences.addons['odc_public'].preferences.debug
-    lib_teeth = odcutils.obj_list_from_lib(bpy.context.user_preferences.addons['odc_public'].preferences.tooth_lib, exclude = '_', debug = dbg)
+    settings = get_settings()
+    dbg = settings.debug
+    lib_teeth = odcutils.obj_list_from_lib(settings.tooth_lib, exclude = '_', debug = dbg)
     for ind, obj in enumerate(lib_teeth):
         lib_teeth_enum.append((str(ind), obj, str(ind)))
     

@@ -12,8 +12,11 @@
 # along with this program; if not, write to the Free Software Foundation,
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
-import odc_public
-from  odc_public import odcutils, load_post_method
+
+#import odc_public
+#from  odc_public import odcutils, load_post_method
+
+from . import odcutils, load_post_method
 
 '''
 Template for classes and properties from Cycles Addon
@@ -38,8 +41,8 @@ import bpy
 #we need to add the odc subdirectory to be searched for imports
 #http://stackoverflow.com/questions/918154/relative-paths-in-python
 import sys, os, inspect
-from odc.odcmenus import button_data
-from odc.odcmenus import menu_utils
+from .odcmenus import button_data
+from .odcmenus import menu_utils
 
 #enums
 rest_types=['CONTOUR','PONTIC','COPING','ANATOMIC COPING']

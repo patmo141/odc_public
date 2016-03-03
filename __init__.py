@@ -70,12 +70,18 @@ import odcutils
 class ODCAddonPreferences(AddonPreferences):
     bl_idname = __name__
 
-    addons_folder = bpy.utils.script_paths('addons')[0]
-    data_folder =os.path.join(addons_folder,'odc_public','data')
-    def_tooth_lib = os.path.join(data_folder,"odc_tooth_library.blend")
-    def_mat_lib = os.path.join(data_folder,"odc_materials.blend")
-    def_imp_lib = os.path.join(data_folder,"odc_implants_leone.blend")
-    def_drill_lib = os.path.join(data_folder,"odc_drill_lib.blend")
+    addons = bpy.context.user_preferences.addons
+    
+    folderpath = os.path.dirname(os.path.abspath(__file__))
+    print('SETTINGS FOLDERPATH')
+    print(folderpath)
+    
+    #addons_folder = bpy.utils.script_paths('addons')[0]
+    #data_folder =os.path.join(addons_folder,'odc_public','data')
+    #def_tooth_lib = os.path.join(data_folder,"odc_tooth_library.blend")
+    #def_mat_lib = os.path.join(data_folder,"odc_materials.blend")
+    #def_imp_lib = os.path.join(data_folder,"odc_implants_leone.blend")
+    #def_drill_lib = os.path.join(data_folder,"odc_drill_lib.blend")
     
     #enums
     behavior_modes=['LIST','ACTIVE','ACTIVE_SELECTED']

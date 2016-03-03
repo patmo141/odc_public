@@ -8,7 +8,7 @@ import math
 import bpy
 from mathutils import Vector, Matrix
 import odcutils
-
+from odcutils import get_settings
 
 def active_spanning_restoration(context, exclude = [], debug = False):
     '''
@@ -21,9 +21,9 @@ def active_spanning_restoration(context, exclude = [], debug = False):
 
     if not hasattr(context.scene, 'odc_props'): return [None]
     if len(context.scene.odc_bridges) == 0: return [None]
-    
-    b = context.user_preferences.addons['odc_public'].preferences.behavior
-    behave_mode = context.user_preferences.addons['odc_public'].preferences.behavior_modes[int(b)]
+    settings = get_settings()
+    b = settings.behavior
+    behave_mode = settings.behavior_modes[int(b)]
     
     if behave_mode == 'LIST':
         #choose just one tooth in the list

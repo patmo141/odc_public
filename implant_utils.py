@@ -9,6 +9,7 @@ import bpy
 from mathutils import Vector, Matrix
 #from . 
 import odcutils
+from odcutils import get_settings
 import math
 
 def place_implant(context, implant_space, location,orientation,imp, hardware = True):
@@ -60,7 +61,8 @@ def place_implant(context, implant_space, location,orientation,imp, hardware = T
     current_obs = [ob.name for ob in bpy.data.objects]
     
     #link the new implant from the library
-    odcutils.obj_from_lib(context.user_preferences.addons['odc_public'].preferences.imp_lib, imp)
+    settings = get_settings()
+    odcutils.obj_from_lib(settings.imp_lib, imp)
     
     #this is slightly more robust than trusting we don't have duplicate names.
     for ob in bpy.data.objects:
@@ -94,10 +96,12 @@ def place_implant(context, implant_space, location,orientation,imp, hardware = T
         current_obs = [ob.name for ob in bpy.data.objects]
                     
         inc = imp + '_'
-        hardware_list = odcutils.obj_list_from_lib(context.user_preferences.addons['odc_public'].preferences.imp_lib, include = inc)
+        
+        settings = get_settings()
+        hardware_list = odcutils.obj_list_from_lib(settings.imp_lib, include = inc)
         print(hardware_list)
         for ob in hardware_list:
-            odcutils.obj_from_lib(context.user_preferences.addons['odc_public'].preferences.imp_lib,ob)
+            odcutils.obj_from_lib(settings.imp_lib,ob)
                 
         for ob in bpy.data.objects:
             if ob.name not in current_obs:
