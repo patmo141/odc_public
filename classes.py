@@ -41,8 +41,8 @@ import bpy
 #we need to add the odc subdirectory to be searched for imports
 #http://stackoverflow.com/questions/918154/relative-paths-in-python
 import sys, os, inspect
-from .odcmenus import button_data
-from .odcmenus import menu_utils
+from odcmenus import button_data
+from odcmenus import menu_utils
 
 #enums
 rest_types=['CONTOUR','PONTIC','COPING','ANATOMIC COPING']
