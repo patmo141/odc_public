@@ -75,13 +75,15 @@ class ODCAddonPreferences(AddonPreferences):
     folderpath = os.path.dirname(os.path.abspath(__file__))
     print('SETTINGS FOLDERPATH')
     print(folderpath)
+    data_folder =os.path.join(folderpath,'data\\')
+    
     
     #addons_folder = bpy.utils.script_paths('addons')[0]
     #data_folder =os.path.join(addons_folder,'odc_public','data')
-    #def_tooth_lib = os.path.join(data_folder,"odc_tooth_library.blend")
-    #def_mat_lib = os.path.join(data_folder,"odc_materials.blend")
-    #def_imp_lib = os.path.join(data_folder,"odc_implants_leone.blend")
-    #def_drill_lib = os.path.join(data_folder,"odc_drill_lib.blend")
+    def_tooth_lib = os.path.join(data_folder,"odc_tooth_library.blend")
+    def_mat_lib = os.path.join(data_folder,"odc_materials.blend")
+    def_imp_lib = os.path.join(data_folder,"odc_implants_leone.blend")
+    def_drill_lib = os.path.join(data_folder,"odc_drill_lib.blend")
     
     #enums
     behavior_modes=['LIST','ACTIVE','ACTIVE_SELECTED']
@@ -97,26 +99,26 @@ class ODCAddonPreferences(AddonPreferences):
     #real properties
     tooth_lib = bpy.props.StringProperty(
         name="Tooth Library",
-        #default=def_tooth_lib,
-        default = '',
+        default=def_tooth_lib,
+        #default = '',
         subtype='FILE_PATH')
     
     mat_lib = bpy.props.StringProperty(
         name="Material Library",
-        #default=def_mat_lib,
-        default = '',
+        default=def_mat_lib,
+        #default = '',
         subtype='FILE_PATH')
     
     imp_lib = bpy.props.StringProperty(
         name="Implant Library",
-        #default=def_imp_lib,
-        default = '',
+        default=def_imp_lib,
+        #default = '',
         subtype='FILE_PATH')
     
     drill_lib = bpy.props.StringProperty(
         name="Drill Library",
-        #default=def_drill_lib,
-        default = '',
+        default=def_drill_lib,
+        #default = '',
         subtype='FILE_PATH')
     
     debug = IntProperty(
