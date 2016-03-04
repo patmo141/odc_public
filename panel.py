@@ -326,6 +326,7 @@ class VIEW3D_PT_ODCSplints(bpy.types.Panel):
         row = layout.row()
         row.label(text = "Splints")
         row = layout.row()
+        row.operator("wm.url_open", text = "", icon="INFO").url = "https://github.com/patmo141/odc_public/wiki/Splint-Basics"
         row.operator("opendental.start_guide_help", text = "", icon = 'QUESTION')
         row.operator("opendental.stop_help", text = "", icon = 'CANCEL')
         row = layout.row()
@@ -342,14 +343,11 @@ class VIEW3D_PT_ODCSplints(bpy.types.Panel):
         row = layout.row()
         row.operator("opendental.model_set", text = "Set Model")
         
-        row = layout.row() 
-        row.operator("opendental.initiate_splint_outline", text = 'Mark Outline')
-        
         row = layout.row()
         row.operator("opendental.bone_model_set", text = "Set Bone Model")
         
         row = layout.row()
-        row.operator("opendental.initiate_splint_outline", text = "Start Splint Outline")
+        row.operator("opendental.initiate_splint_outline", text = "Mark Splint Outline")
         
         row = layout.row()
         row.operator("opendental.splint_from_curve", text = "Calculate Splint Base")
