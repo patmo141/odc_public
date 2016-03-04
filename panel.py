@@ -70,7 +70,7 @@ class VIEW3D_PT_ODCSettings(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
     bl_region_type="TOOLS"
     bl_category = "Open Dental CAD"
-    bl_label = "ODC Settings"
+    bl_label = "ODC Control Panel"
     bl_context = ""
 
     def draw(self, context):
@@ -81,8 +81,10 @@ class VIEW3D_PT_ODCSettings(bpy.types.Panel):
         #split = layout.split()
 
         row = layout.row()
-        row.label(text="ODC Settings")
-        row.operator("wm.url_open", text = "", icon="QUESTION").url = "https://sites.google.com/site/blenderdental/contributors"
+
+        row.operator("wm.url_open", text = "Wiki", icon="INFO").url = "https://github.com/patmo141/odc_public/wiki"
+        row.operator("wm.url_open", text = "Errors", icon="ERROR").url = "https://github.com/patmo141/odc_public/issues"
+        row.operator("wm.url_open", text = "Forum", icon="QUESTION").url = "https://www.zohodiscussions.com/blenderdental#Forum/general/help"
         
         #if not odc.odc_restricted_registration:
             #row = layout.row()
@@ -99,10 +101,10 @@ class VIEW3D_PT_ODCSettings(bpy.types.Panel):
         col = self.layout.column(align=True)
         #col.label(text="Trace Tools")
         row = col.row()
-        row.prop(sce.odc_props, "show_teeth", text="Teeth", icon="MONKEY")
-        row.prop(sce.odc_props, "show_implant", text="Implants", icon="MONKEY")
-        row.prop(sce.odc_props, "show_bridge", text="Bridges", icon="MONKEY")
-        row.prop(sce.odc_props, "show_splint", text="Splints", icon="MONKEY")
+        row.prop(sce.odc_props, "show_teeth", text="Teeth", icon = 'LAYER_ACTIVE')
+        row.prop(sce.odc_props, "show_implant", text="Implants", icon = 'LAYER_ACTIVE')
+        row.prop(sce.odc_props, "show_bridge", text="Bridges", icon = 'LAYER_ACTIVE')
+        row.prop(sce.odc_props, "show_splint", text="Splints", icon = 'LAYER_ACTIVE')
         
 class VIEW3D_PT_ODCTeeth(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
