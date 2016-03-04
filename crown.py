@@ -499,86 +499,91 @@ class CBGetCrownForm(bpy.types.Operator):
         #TODO:...incorporate with teeth on curve
         sce = context.scene
         settings = get_settings()
+        tooth = None
         tooth_candidates = odcutils.tooth_selection(context)
         if tooth_candidates:
             tooth = tooth_candidates[0]
-        if not tooth:
-            self.report({'WARNING'},"I'm not sure which tooth you want, guessing based on active tooth in list")
-            tooth = sce.odc_teeth[sce.odc_tooth_index]
+            if not tooth:
+                self.report({'WARNING'},"I'm not sure which tooth you want, guessing based on active tooth in list")
+                tooth = sce.odc_teeth[sce.odc_tooth_index]
         
-        if tooth.restoration and tooth.restoration in bpy.data.objects:
-            old_ob = bpy.data.objects[tooth.restoration]
-            old_ob.name = 'To Delete'
-            context.scene.objects.unlink(old_ob)
-            old_ob.user_clear()
-            bpy.data.objects.remove(old_ob)
-            
+            if tooth.restoration and tooth.restoration in bpy.data.objects:
+                old_ob = bpy.data.objects[tooth.restoration]
+                old_ob.name = 'To Delete'
+                context.scene.objects.unlink(old_ob)
+                old_ob.user_clear()
+                bpy.data.objects.remove(old_ob)
+        
+        if tooth == None:
+            self.report({'WARNING'},"No planned teeth, inserting object anyway")
+                
         odcutils.obj_from_lib(settings.tooth_lib,self.ob_list)
         
         ob = bpy.data.objects[self.ob_list]
         sce.objects.link(ob)
         ob.location = sce.cursor_location
-        ob.name = tooth.name + "_FullContour"
-        tooth.contour = ob.name
-        ob.rotation_mode = 'QUATERNION'
-        
-        #align with the insertion axis
-        axis = tooth.axis
-        if not axis:
-            self.report({'WARNING'}, "No insertion axis set, can't align tooth properly, may cause problem later!")
-        else:
-            rot = sce.objects[axis].rotation_quaternion #matrix_world.to_quaterion() ?  Perhaps so
-            ob.rotation_quaternion = rot
-        
-        #appropriate parenting
-        if sce.odc_props.master:
-            master=sce.odc_props.master
-            Master=sce.objects[master]
         
         
-        
-        if tooth.rest_type == '0' or tooth.rest_type == '1':
-            tooth.restoration = ob.name
-        
-        if tooth.rest_type == '1':
-            print('pontic!')
-            sce.objects.active = ob
-            bpy.ops.object.mode_set(mode='EDIT')
-            bpy.ops.mesh.select_all(action='DESELECT')
-            bpy.ops.mesh.select_non_manifold()
-            bpy.ops.mesh.looptools_flatten(influence = 100, plane = 'best_fit', restriction = 'none')
-            bpy.ops.transform.translate(value = (0,0,-1))
+        if tooth != None:
             
-            bpy.ops.object.mode_set(mode= 'OBJECT')
-            eds = [ed for ed in ob.data.edges if ed.select]
-            odcutils.fill_loop_scale(ob, eds, .3, debug = False)
+            ob.name = tooth.name + "_FullContour"
+            tooth.contour = ob.name
+            ob.rotation_mode = 'QUATERNION'
+        
+            #align with the insertion axis
+            axis = tooth.axis
+            if not axis:
+                self.report({'WARNING'}, "No insertion axis set, can't align tooth properly, may cause problem later!")
+            else:
+                rot = sce.objects[axis].rotation_quaternion #matrix_world.to_quaterion() ?  Perhaps so
+                ob.rotation_quaternion = rot
+        
+        
+        
+        
+        
+            if tooth.rest_type == '0' or tooth.rest_type == '1':
+                tooth.restoration = ob.name
+        
+            if tooth.rest_type == '1':
+                print('pontic!')
+                sce.objects.active = ob
+                bpy.ops.object.mode_set(mode='EDIT')
+                bpy.ops.mesh.select_all(action='DESELECT')
+                bpy.ops.mesh.select_non_manifold()
+                bpy.ops.mesh.looptools_flatten(influence = 100, plane = 'best_fit', restriction = 'none')
+                bpy.ops.transform.translate(value = (0,0,-1))
             
-            bpy.ops.object.mode_set(mode='EDIT')
-            bpy.ops.mesh.select_more()
-            bpy.ops.mesh.select_more()
+                bpy.ops.object.mode_set(mode= 'OBJECT')
+                eds = [ed for ed in ob.data.edges if ed.select]
+                odcutils.fill_loop_scale(ob, eds, .3, debug = False)
             
-            #new vertex group for smoothin after multires.
-            n = len(ob.vertex_groups)
-            bpy.ops.object.vertex_group_assign_new()
-            ob.vertex_groups[n].name = 'Smooth'
+                bpy.ops.object.mode_set(mode='EDIT')
+                bpy.ops.mesh.select_more()
+                bpy.ops.mesh.select_more()
             
-            bpy.ops.mesh.remove_doubles()
-            #this operator causes multires data to get screwed up!
-            #bpy.ops.mesh.relax(iterations=10)
-            #dont do this either...we will make new functions
-            #to control the bottom of the pontic
-            #bpy.ops.mesh.vertices_smooth(repeat = 5)
-            bpy.ops.object.mode_set(mode='OBJECT')
+                #new vertex group for smoothin after multires.
+                n = len(ob.vertex_groups)
+                bpy.ops.object.vertex_group_assign_new()
+                ob.vertex_groups[n].name = 'Smooth'
             
-            #add a smooth modifier to attempt to mitigate
-            #the funky result when changing base mesh topology
-            n = len(ob.modifiers)
-            bpy.ops.object.modifier_add(type = 'SMOOTH')
-            mod = ob.modifiers[n]
-            mod.name = 'Smooth'        
-            mod.vertex_group = 'Smooth'
-            mod.iterations = 30
-            mod.factor = 2    
+                bpy.ops.mesh.remove_doubles()
+                #this operator causes multires data to get screwed up!
+                #bpy.ops.mesh.relax(iterations=10)
+                #dont do this either...we will make new functions
+                #to control the bottom of the pontic
+                #bpy.ops.mesh.vertices_smooth(repeat = 5)
+                bpy.ops.object.mode_set(mode='OBJECT')
+            
+                #add a smooth modifier to attempt to mitigate
+                #the funky result when changing base mesh topology
+                n = len(ob.modifiers)
+                bpy.ops.object.modifier_add(type = 'SMOOTH')
+                mod = ob.modifiers[n]
+                mod.name = 'Smooth'        
+                mod.vertex_group = 'Smooth'
+                mod.iterations = 30
+                mod.factor = 2    
             
         #fill the bottom if it's a pontic
         
