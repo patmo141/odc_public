@@ -234,7 +234,7 @@ class VIEW3D_PT_ODCImplants(bpy.types.Panel):
             #row.label(text = "Implant library not loaded :-(")
         
         row = layout.row()
-        row.operator("opendental.opendental.place_guide_sleeve", text = "Place Sleeve")
+        row.operator("opendental.place_guide_sleeve", text = "Place Sleeve")
         
         row = layout.row()
         row.operator("opendental.implant_guide_cylinder", text = "Place Guide Cylinder")
