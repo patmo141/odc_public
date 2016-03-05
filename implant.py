@@ -78,7 +78,7 @@ class OPENDENTAL_OT_implant_from_contour(bpy.types.Operator):
     imp = bpy.props.EnumProperty(name="Implant Library Objects", 
                                  description="A List of the tooth library", 
                                  items=item_cb)
-    depth = bpy.props.IntProperty(name = 'Depth', default = 12)
+    depth = bpy.props.IntProperty(name = 'Depth', description = "milimeters below CEJ to place implant", default = 5)
     hardware = bpy.props.BoolProperty(name="Include Hardware", default=True)
     @classmethod
     def poll(cls, context):
@@ -136,9 +136,18 @@ class OPENDENTAL_OT_implant_from_contour(bpy.types.Operator):
                     y = mx[1][3]
                     z = mx[2][3]
                     
+                    #CEJ Location
                     new_loc = odcutils.box_feature_locations(contour, Vector((0,0,-1)))
-                    loc = new_loc + self.depth * neg_z
-                    Imp = implant_utils.place_implant(context, sce.odc_implants[tooth.name], loc, rot_diff, self.imp, hardware = self.hardware)
+                    
+                    Imp = implant_utils.place_implant(context, sce.odc_implants[tooth.name], new_loc, rot_diff, self.imp, hardware = self.hardware)
+                    
+                    #reposition platform below CEJ
+                    world_mx = Imp.matrix_world
+                    delta =  Imp.dimensions[2] * world_mx.to_3x3() * Vector((0,0,1)) + self.depth * world_mx.to_3x3() * Vector((0,0,1))
+                    
+                    world_mx[0][3] += delta[0]
+                    world_mx[1][3] += delta[1]
+                    world_mx[2][3] += delta[2]
                     #odcutils.reorient_object(Imp, rot_diff)
         
         odcutils.layer_management(sce.odc_implants, debug = False)
