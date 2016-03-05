@@ -183,7 +183,7 @@ class OPENDENTAL_OT_place_implant(bpy.types.Operator):
     
     def execute(self, context):
         settings = get_settings()
-        dbg = settings.preferences.debug
+        dbg = settings.debug
         #if bpy.context.mode != 'OBJECT':
         #    bpy.ops.object.mode_set(mode = 'OBJECT')
         
@@ -204,16 +204,19 @@ class OPENDENTAL_OT_place_implant(bpy.types.Operator):
                     self.report({'WARNING'}, "replacing the existing implant with the one you chose")
                     Implant = bpy.data.objects[implant_space.implant]
                     
+                    
+                    #the origin/location of the implant is it's apex
                     L = Implant.location.copy()  
-                    #mx_b = Implant.matrix_basis.copy()
+
                     world_mx = Implant.matrix_world.copy()
-                    #mx_l = Implant.matrix_local.copy()
                     
-                    sce.cursor_location = L
-                    
+                    #the platorm is the length of the implant above the apex, in the local Z direction
+                    #local Z positive is out the apex, soit's negative.
+                    #Put the cursor there
+                    sce.cursor_location = L - Implant.dimensions[2] * world_mx.to_3x3() *  Vector((0,0,1))
+                                        
                     #first get rid of children...so we can use the
                     #parent to find out who the children are
-                    #this sounds really bad
                     if Implant.children:
                         for child in Implant.children:
                             sce.objects.unlink(child)
@@ -231,12 +234,11 @@ class OPENDENTAL_OT_place_implant(bpy.types.Operator):
                 #TDOD what about the children/hardwares?
                 else:
                     world_mx = Matrix.Identity(4)
-                    world_mx[0][3]=sce.cursor_location[0]
-                    world_mx[1][3]=sce.cursor_location[1]
-                    world_mx[2][3]=sce.cursor_location[2]
                     
-                    #mx_b = Matrix.Identity(4)
-                    #mx_l = Matrix.Identity(4)
+                world_mx[0][3]=sce.cursor_location[0]
+                world_mx[1][3]=sce.cursor_location[1]
+                world_mx[2][3]=sce.cursor_location[2]
+                                        
                 #is this more memory friendly than listing all objects?
                 current_obs = [ob.name for ob in bpy.data.objects]
                 
@@ -266,11 +268,17 @@ class OPENDENTAL_OT_place_implant(bpy.types.Operator):
                             sce.objects.link(ob)
                             ob.parent = Implant
                             ob.layers[11] = True
+                
 
-                #Implant.matrix_basis = mx_b
+                delta =  Implant.dimensions[2] * world_mx.to_3x3() * Vector((0,0,1))
+                print(delta.length)
+                world_mx[0][3] += delta[0]
+                world_mx[1][3] += delta[1]
+                world_mx[2][3] += delta[2]
+                    
+
                 Implant.matrix_world = world_mx
-                #Implant.matrix_local = mx_l
-                #Implant.location = L
+
                 
                 if sce.odc_props.master:
                     Master = bpy.data.objects[sce.odc_props.master]
