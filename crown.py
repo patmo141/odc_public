@@ -200,7 +200,56 @@ class OPENDENTAL_OT_set_as_prep(bpy.types.Operator):
             context.scene.layers[i] = layer
         context.scene.layers[1] = True
         return {'FINISHED'}
+
+class OPENDENTAL_OT_set_mesial(bpy.types.Operator):
+    ''''''
+    bl_idname = 'opendental.set_mesial'
+    bl_label = "Set Mesial"
+    bl_options = {'REGISTER','UNDO'}
     
+    
+    def execute(self, context):
+        #grab active tooth the old way
+        sce=bpy.context.scene
+        tooth = odcutils.active_tooth_from_index(sce)
+        tooth.mesial = context.object.name
+        return {'FINISHED'}
+    
+class OPENDENTAL_OT_set_distal(bpy.types.Operator):
+    ''''''
+    bl_idname = 'opendental.set_distal'
+    bl_label = "Set Distal"
+    bl_options = {'REGISTER','UNDO'}
+    
+    
+    def execute(self, context):
+        #grab active tooth the old way
+        sce=bpy.context.scene
+        tooth = odcutils.active_tooth_from_index(sce)
+        tooth.distal = context.object.name
+        
+        return {'FINISHED'}
+class OPENDENTAL_OT_set_opposing(bpy.types.Operator):
+    ''''''
+    bl_idname = 'opendental.set_opposing'
+    bl_label = "Set Opposing"
+    bl_options = {'REGISTER','UNDO'}
+    
+    for_all = bpy.props.BoolProperty(default = True)
+    def execute(self, context):
+        #grab active tooth the old way
+        
+        if self.for_all:
+            for tooth in context.scene.odc_teeth:
+                tooth.opposing = context.object.name
+            
+            context.scene.odc_props.opposing = context.object.name
+        else:
+            sce=bpy.context.scene
+            tooth = odcutils.active_tooth_from_index(sce)
+            tooth.opposing = context.object.name
+        
+        return {'FINISHED'}        
 class ViewToZ(bpy.types.Operator):
     '''Aligns the local coordinates of the acive object with the view'''
     bl_idname = "view3d.view_to_z"
@@ -1329,7 +1378,116 @@ class OPENDENTAL_OT_assess_contacts(bpy.types.Operator):
         
         #go into weight paint mode?
         return {'FINISHED'}
-   
+
+class OPENDENTAL_OT_grind_contacts(bpy.types.Operator):
+    ''''''
+    bl_idname = 'opendental.grind_contacts'
+    bl_label = "Grind Contacts"
+    bl_options = {'REGISTER','UNDO'}
+    
+    mesial = bpy.props.BoolProperty(default = True)
+    distal = bpy.props.BoolProperty(default = True)
+    overlap = bpy.props.FloatProperty(name='Offset', default = .05)
+    @classmethod
+    def poll(cls, context):
+        #restoration exists and is in scene
+        tooth = odcutils.tooth_selection(context)[0]  #TODO: make this poll work for all selected teeth...
+        condition_1 = tooth.mesial and tooth.mesial in bpy.data.objects #TODO: make this restoration when that property implemented
+        condition_2 = tooth.distal and tooth.distal in bpy.data.objects
+        condition_3 = tooth.opposing and tooth.opposing in bpy.data.objects
+        condition_4 = tooth.contour and tooth.contour in bpy.data.objects
+        condition_5 = tooth.restoration and tooth.restoration in bpy.data.objects
+        
+        
+        return (condition_1 or condition_2 or condition_3) and (condition_4 or condition_5)
+            
+    def execute(self, context):
+        
+        teeth = odcutils.tooth_selection(context)
+        
+        for tooth in teeth:
+            if tooth.restoration in bpy.data.objects:
+                Contour = bpy.data.objects[tooth.restoration]
+            else:
+                Contour = bpy.data.objects[tooth.contour]
+            
+                    
+            if self.mesial:
+                Mesial = bpy.data.objects.get(tooth.mesial)
+                if Mesial == None: pass
+                
+                mod = Contour.modifiers.new('Mesial Contact','SHRINKWRAP')
+                mod.wrap_method = 'PROJECT'
+                mod.use_negative_direction = True
+                mod.use_positive_direction = False
+                mod.use_project_z = False
+                mod.use_project_y = False
+                mod.use_project_x = True
+                mod.offset = self.overlap
+                mod.target = Mesial
+    
+            if self.distal:
+                Distal = bpy.data.objects.get(tooth.distal)
+                if Distal == None: pass
+                
+                mod = Contour.modifiers.new('Distal Contact','SHRINKWRAP')
+                mod.wrap_method = 'PROJECT'
+                mod.use_negative_direction = False
+                mod.use_positive_direction = True
+                mod.use_project_z = False
+                mod.use_project_y = False
+                mod.use_project_x = True
+                mod.offset = -self.overlap
+                mod.target = Distal
+        
+        #go into weight paint mode?
+        return {'FINISHED'}
+
+class OPENDENTAL_OT_grind_occlusion(bpy.types.Operator):
+    ''''''
+    bl_idname = 'opendental.grind_occlusion'
+    bl_label = "Grind Occlusion"
+    bl_options = {'REGISTER','UNDO'}
+    
+
+    overlap = bpy.props.FloatProperty(name='Offset', default = .05)
+    @classmethod
+    def poll(cls, context):
+        #restoration exists and is in scene
+        tooth = odcutils.tooth_selection(context)[0]  #TODO: make this poll work for all selected teeth...
+        condition_3 = tooth.opposing and tooth.opposing in bpy.data.objects
+        condition_4 = tooth.contour and tooth.contour in bpy.data.objects
+        condition_5 = tooth.restoration and tooth.restoration in bpy.data.objects
+        
+        
+        return condition_3 and (condition_4 or condition_5)
+            
+    def execute(self, context):
+        
+        teeth = odcutils.tooth_selection(context)
+        
+        for tooth in teeth:
+            if tooth.restoration in bpy.data.objects:
+                Contour = bpy.data.objects[tooth.restoration]
+            else:
+                Contour = bpy.data.objects[tooth.contour]
+                
+            Opposing = bpy.data.objects.get(tooth.opposing)
+            if Opposing == None: pass
+            
+            mod = Contour.modifiers.new('Occlusion','SHRINKWRAP')
+            mod.wrap_method = 'PROJECT'
+            mod.use_negative_direction = True
+            mod.use_positive_direction = False
+            mod.use_project_z = True
+            mod.use_project_y = False
+            mod.use_project_x = False
+            mod.offset = self.overlap
+            mod.target = Opposing
+    
+            
+        #go into weight paint mode?
+        return {'FINISHED'}     
 class OPENDENTAL_OT_teeth_arch(bpy.types.Operator):
     ''''''
     bl_idname = 'opendental.teeth_to_arch'
@@ -1431,10 +1589,16 @@ def register():
     bpy.utils.register_class(OPENDENTAL_OT_center_all_objects)
     bpy.utils.register_class(OPENDENTAL_OT_plan_restorations)
     bpy.utils.register_class(OPENDENTAL_OT_set_as_prep)
+    bpy.utils.register_class(OPENDENTAL_OT_set_opposing)
+    bpy.utils.register_class(OPENDENTAL_OT_set_mesial)
+    bpy.utils.register_class(OPENDENTAL_OT_set_distal)
+    
     bpy.utils.register_class(OPENDENTAL_OT_insertion_axis)
     bpy.utils.register_class(OPENDENTAL_OT_seat_to_margin)
     bpy.utils.register_class(OPENDENTAL_OT_calculate_inside)
     bpy.utils.register_class(OPENDENTAL_OT_prep_from_crown)
+    bpy.utils.register_class(OPENDENTAL_OT_grind_contacts)
+    bpy.utils.register_class(OPENDENTAL_OT_grind_occlusion)
     bpy.utils.register_class(OPENDENTAL_OT_crown_cervical_convergence)
     bpy.utils.register_class(OPENDENTAL_make_solid_restoration)
     bpy.utils.register_class(OPENDENTAL_OT_manufacture_restoration)
@@ -1452,8 +1616,14 @@ def unregister():
     bpy.utils.unregister_class(OPENDENTAL_OT_center_all_objects)
     bpy.utils.unregister_class(OPENDENTAL_OT_plan_restorations)
     bpy.utils.unregister_class(OPENDENTAL_OT_set_as_prep)
+    bpy.utils.unregister_class(OPENDENTAL_OT_set_opposing)
+    bpy.utils.unregister_class(OPENDENTAL_OT_set_mesial)
+    bpy.utils.unregister_class(OPENDENTAL_OT_set_distal)
+
     bpy.utils.unregister_class(OPENDENTAL_OT_insertion_axis)
     bpy.utils.unregister_class(OPENDENTAL_OT_seat_to_margin)
+    bpy.utils.unregister_class(OPENDENTAL_OT_grind_contacts)
+    bpy.utils.unregister_class(OPENDENTAL_OT_grind_occlusion)
     bpy.utils.unregister_class(OPENDENTAL_OT_calculate_inside)
     bpy.utils.unregister_class(OPENDENTAL_OT_prep_from_crown)
     bpy.utils.unregister_class(OPENDENTAL_OT_crown_cervical_convergence)
