@@ -721,7 +721,7 @@ def cervical_convergence_improved(context, tooth, angle, selected = False, debug
         print('completed cerv convergnce in %f seconds' % finish)
 
 
-def seat_to_margin_improved(contex, sce, tooth, influence, debug = False):
+def seat_to_margin_improved(context, sce, tooth, influence, debug = False):
     if debug:
         start = time.time()
         
@@ -755,7 +755,7 @@ def seat_to_margin_improved(contex, sce, tooth, influence, debug = False):
     ## ###Toggle for selection and groups to udpate #####
     bpy.ops.object.editmode_toggle() #object
     bpy.ops.object.editmode_toggle() #edit
-    
+    sce.tool_settings.vertex_group_weight = 1
     if margin not in Restoration.vertex_groups:
         n=len(Restoration.vertex_groups)
         bpy.ops.object.vertex_group_assign_new()
