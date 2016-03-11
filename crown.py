@@ -1485,9 +1485,9 @@ class OPENDENTAL_OT_grind_occlusion(bpy.types.Operator):
             mod.offset = self.overlap
             mod.target = Opposing
     
-            
         #go into weight paint mode?
-        return {'FINISHED'}     
+        return {'FINISHED'}  
+       
 class OPENDENTAL_OT_teeth_arch(bpy.types.Operator):
     ''''''
     bl_idname = 'opendental.teeth_to_arch'

@@ -150,6 +150,15 @@ class VIEW3D_PT_ODCTeeth(bpy.types.Panel):
         row.operator("opendental.set_as_prep", text = "Set Prep")
         
         row = layout.row()
+        row.operator("opendental.set_opposing", text = "Set Opposing")
+        
+        row = layout.row()
+        row.operator("opendental.set_mesial", text = "Set Mesial")
+        
+        row = layout.row()
+        row.operator("opendental.set_distal", text = "Set Distal")
+        
+        row = layout.row()
         row.operator("opendental.insertion_axis", text = "Insertion Axis")
         
         row = layout.row()
@@ -165,10 +174,6 @@ class VIEW3D_PT_ODCTeeth(bpy.types.Panel):
         row.operator("opendental.get_crown_form", text = "Get Crown From")
         
         row = layout.row()
-        row.operator("opendental.cervical_convergence", text = "Angle Cervical Convergence")
-        
-        
-        row = layout.row()
         row.operator("opendental.lattice_deform", text = "Lattice Deform Crown")
         
         row = layout.row()
@@ -176,6 +181,12 @@ class VIEW3D_PT_ODCTeeth(bpy.types.Panel):
         
         row = layout.row()
         row.operator("opendental.cervical_convergence", text = "Angle Cervical Convergence")
+        
+        row = layout.row()
+        row.operator("opendental.grind_occlusion", text = "Grind Occlusion")
+        
+        row = layout.row()
+        row.operator("opendental.grind_contacts", text = "Grind Contacts")
         
         row = layout.row()
         row.operator("opendental.calculate_inside", text = "Calculate Intaglio")
