@@ -1158,8 +1158,8 @@ class OPENDENTAL_OT_splint_bezier_model(bpy.types.Operator):
         if len(context.scene.odc_splints):
             settings = get_settings()
             dbg = settings.debug
-            b = context.user_preferences.addons['odc_public'].preferences.behavior
-            behave_mode = context.user_preferences.addons['odc_public'].preferences.behavior_modes[int(b)]
+            b = settings.behavior
+            behave_mode = settings.behavior_modes[int(b)]
             if  behave_mode in {'ACTIVE','ACTIVE_SELECTED'} and dbg > 2:
                 obs =  context.selected_objects
                 cond_1 = len(obs) == 2
@@ -1182,8 +1182,8 @@ class OPENDENTAL_OT_splint_bezier_model(bpy.types.Operator):
         
         #first, ensure all models are present and not deleted etc
         odcutils.scene_verification(context.scene, debug = dbg)      
-        b = context.user_preferences.addons['odc_public'].preferences.behavior
-        behave_mode = context.user_preferences.addons['odc_public'].preferences.behavior_modes[int(b)]
+        b = settings.behavior
+        behave_mode = settings.behavior_modes[int(b)]
         
         settings = get_settings()
         dbg = settings.debug    
