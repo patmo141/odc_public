@@ -200,7 +200,7 @@ def register():
     #bpy.utils.register_module(__name__)
     #import the relevant modules
     #from . 
-    import classes, odcutils, crown, margin, bridge, splint, implant, panel, help #, crown, implant, splint, panel, odcmenus, bgl_utils
+    import classes, odcutils, crown, margin, bridge, splint, implant, panel, help, flexible_tooth #, crown, implant, splint, panel, odcmenus, bgl_utils
         
     #register them
     classes.register()
@@ -212,6 +212,7 @@ def register():
     bridge.register()
     splint.register()
     help.register()
+    flexible_tooth.register()
     #odcmenus.register()
     #bgl_utils.register()
     
@@ -241,7 +242,7 @@ def register():
     
 def unregister():
     #import the relevant modules
-    from . import classes, odcutils, crown, margin, bridge, splint, panel, implant#, splint, panel, odcmenus, bgl_utils
+    from . import classes, odcutils, crown, margin, bridge, splint, panel, implant, flexible_tooth#, splint, panel, odcmenus, bgl_utils
     
     bpy.app.handlers.save_pre.remove(save_pre_method)
     bpy.app.handlers.load_post.remove(load_post_method)
@@ -258,6 +259,7 @@ def unregister():
     splint.unregister()
     bridge.unregister()
     panel.unregister()
+    flexible_tooth.unregister()
     
     #odcmenus.unregister()
     #bgl_utils.unregister()

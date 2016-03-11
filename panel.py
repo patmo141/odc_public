@@ -173,8 +173,19 @@ class VIEW3D_PT_ODCTeeth(bpy.types.Panel):
         row = layout.row()
         row.operator("opendental.get_crown_form", text = "Get Crown From")
         
-        row = layout.row()
-        row.operator("opendental.lattice_deform", text = "Lattice Deform Crown")
+        if context.object and 'LAPLACIANDEFORM' in [mod.type for mod in context.object.modifiers]:
+            row = layout.row()
+            row.operator("opendental.flexitooth_keep", text = "FlexiTooth Keep")
+        else:
+            row = layout.row()
+            row.operator("opendental.flexitooth", text = "FlexiTooth")
+        
+        if context.object and 'LATTICE' in [mod.type for mod in context.object.modifiers]:
+            row = layout.row()
+            row.operator("opendental.keep_shape", text = "Lattice Deform Keep")
+        else:
+            row = layout.row()
+            row.operator("opendental.lattice_deform", text = "Lattice Deform Crown")
         
         row = layout.row()
         row.operator("opendental.seat_to_margin", text = "Seat To Margin")
