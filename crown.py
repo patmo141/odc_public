@@ -213,6 +213,8 @@ class OPENDENTAL_OT_set_mesial(bpy.types.Operator):
         sce=bpy.context.scene
         tooth = odcutils.active_tooth_from_index(sce)
         tooth.mesial = context.object.name
+        
+        self.report({'INFO'},'You Set The Mesial')
         return {'FINISHED'}
     
 class OPENDENTAL_OT_set_distal(bpy.types.Operator):
@@ -227,7 +229,7 @@ class OPENDENTAL_OT_set_distal(bpy.types.Operator):
         sce=bpy.context.scene
         tooth = odcutils.active_tooth_from_index(sce)
         tooth.distal = context.object.name
-        
+        self.report({'INFO'},'You Set The Distal')
         return {'FINISHED'}
     
 class OPENDENTAL_OT_set_opposing(bpy.types.Operator):
@@ -249,7 +251,7 @@ class OPENDENTAL_OT_set_opposing(bpy.types.Operator):
             sce=bpy.context.scene
             tooth = odcutils.active_tooth_from_index(sce)
             tooth.opposing = context.object.name
-        
+        self.report({'INFO'},'You Set The Opposing')
         return {'FINISHED'}
     
            
@@ -1394,6 +1396,7 @@ class OPENDENTAL_OT_grind_contacts(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         #restoration exists and is in scene
+        if not len(odcutils.tooth_selection(context)): return False
         tooth = odcutils.tooth_selection(context)[0]  #TODO: make this poll work for all selected teeth...
         condition_1 = tooth.mesial and tooth.mesial in bpy.data.objects #TODO: make this restoration when that property implemented
         condition_2 = tooth.distal and tooth.distal in bpy.data.objects
