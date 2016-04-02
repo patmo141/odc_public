@@ -229,6 +229,7 @@ class OPENDENTAL_OT_set_distal(bpy.types.Operator):
         tooth.distal = context.object.name
         
         return {'FINISHED'}
+    
 class OPENDENTAL_OT_set_opposing(bpy.types.Operator):
     ''''''
     bl_idname = 'opendental.set_opposing'
@@ -249,7 +250,9 @@ class OPENDENTAL_OT_set_opposing(bpy.types.Operator):
             tooth = odcutils.active_tooth_from_index(sce)
             tooth.opposing = context.object.name
         
-        return {'FINISHED'}        
+        return {'FINISHED'}
+    
+           
 class ViewToZ(bpy.types.Operator):
     '''Aligns the local coordinates of the acive object with the view'''
     bl_idname = "view3d.view_to_z"
@@ -1387,7 +1390,7 @@ class OPENDENTAL_OT_grind_contacts(bpy.types.Operator):
     
     mesial = bpy.props.BoolProperty(default = True)
     distal = bpy.props.BoolProperty(default = True)
-    overlap = bpy.props.FloatProperty(name='Offset', default = .05)
+    overlap = bpy.props.FloatProperty(name='Offset', default = .04)
     @classmethod
     def poll(cls, context):
         #restoration exists and is in scene
@@ -1425,6 +1428,13 @@ class OPENDENTAL_OT_grind_contacts(bpy.types.Operator):
                 mod.use_project_x = True
                 mod.offset = self.overlap
                 mod.target = Mesial
+                
+                if tooth.mesial in {context.scene.odc_props.master, tooth.prep_model}:
+                    mod.vertex_group = 'Mesial Connector'
+                    mod.cull_face = 'FRONT'
+                    mod.project_limit = .5
+                    
+                     
     
             if self.distal:
                 Distal = bpy.data.objects.get(tooth.distal)
@@ -1439,6 +1449,12 @@ class OPENDENTAL_OT_grind_contacts(bpy.types.Operator):
                 mod.use_project_x = True
                 mod.offset = -self.overlap
                 mod.target = Distal
+                
+                if tooth.distal in {context.scene.odc_props.master, tooth.prep_model}:
+                    mod.vertex_group = 'Distal Connector'
+                    mod.cull_face = 'FRONT'
+                    mod.project_limit = .5
+                    
         
         #go into weight paint mode?
         return {'FINISHED'}
