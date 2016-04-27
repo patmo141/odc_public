@@ -4,6 +4,7 @@ Created on Feb 8, 2013
 @author: Patrick
 '''
 import bpy
+import bmesh
 #from . 
 import odcutils
 import crown_methods
@@ -466,7 +467,7 @@ def cloth_fill_main(context, loop_obj, oct, smooth, debug = False):
                 bpy.ops.object.duplicate()
                 #active object is now the mesh duplicate
     
-    #this will become our final cloth filled object
+    #this will become our final cloth filled objec
     CurveMesh = context.object
     CurveMesh.name = "Cloth Tray Mesh"
     
@@ -675,6 +676,155 @@ def cloth_fill_main(context, loop_obj, oct, smooth, debug = False):
             print("average grid size: " + str(avg_edge))
         
     return CurveMesh
+
+
+def cloth_fill_main2(context, loop_obj, oct, smooth, debug = False):
+    '''
+    notes:
+       make sure the user view is such that you can see the entire ring with
+       out any corosses (knots)
+       
+       if calling from script not in 3dview, you can override the view
+       
+    args:
+        context - blender context
+        loop_obj:  blender curve object or mesh object representing just a loop
+        oct - octree depth for the grid to fill.
+        smooth - iteartions to smooth the surface (soap bubble effect)
+    return:
+        CurveMesh :  The filled looop object type Blender Object (Mesh) 
+    '''
+    
+    #selection mode = verts
+    sce = context.scene
+ 
+    if context.area.type != 'VIEW_3D':
+        # Py cant access notifers
+        for area in context.window.screen.areas:
+            if area.type == 'VIEW_3D':
+            #    for reg in area.regions:
+            #        if reg.type == 'WINDOW':
+            #            region = reg
+
+                for spc in area.spaces:
+                    if spc.type == 'VIEW_3D':
+                        v3d = spc
+                        region = spc.region_3d
+    else:
+        #get the space data
+        v3d = bpy.context.space_data
+        #v3d.transform_orientation = 'GLOBAL'
+        #v3d.pivot_point = 'MEDIAN_POINT'
+        region = v3d.region_3d     
+           
+    vrot = region.view_rotation #this is a quat
+    Z = vrot * Vector((0,0,1))
+    
+    #change the mesh orientation to align with view..for blockout
+    odcutils.reorient_object(loop_obj, vrot) #TODO test this
+    sce.update()
+    
+    if loop_obj.parent:
+        reparent = True
+    else:
+        reparent = False
+        
+    if loop_obj.type not in {'CURVE', 'MESH'}: return
+    
+    me = loop_obj.to_mesh(context.scene, True, 'PREVIEW')
+    tray_bme = bmesh.new()
+    tray_bme.from_mesh(me)
+    
+    tray_me = bpy.data.meshes.new('cloth tray')
+    TrayOb = bpy.data.objects.new('Cloth Tray', tray_me)
+    TrayOb.matrix_world = loop_obj.matrix_world
+        
+    #do some size estimation
+    min_size = min(loop_obj.dimensions)
+    size = max(list(loop_obj.dimensions))
+    grid_predict = size * 0.9 / pow(oct,2)
+    print("grid prediction is:  " + str(grid_predict))
+            
+    #make a 2nd object to project down on...
+    tmp_bme = bmesh.new()
+    tmp_bme.from_mesh(me)
+    temp_me = bpy.data.meshes.new('cloth temp')
+    TempOb = bpy.data.objects.new('Cloth Temp', temp_me)
+    TempOb.matrix_world = loop_obj.matrix_world
+    context.scene.objects.link(TempOb)
+    
+    #fill the the surface of the temp
+    geom = bmesh.ops.triangle_fill(tmp_bme, use_beauty = True, edges = tmp_bme.edges)    
+    tmp_bme.edges.ensure_lookup_table()
+    tmp_bme.verts.ensure_lookup_table()
+    
+    #move edges outward a little
+    perim_eds = [ed for ed in tmp_bme.edges if not ed.is_manifold]
+    odcutils.extrude_bmesh_loop(tmp_bme, perim_eds, loop_obj.matrix_world, Z, -.001 * min_size, move_only = True)
+    
+    #This time add an extrusion
+    odcutils.extrude_bmesh_loop(tmp_bme, perim_eds, loop_obj.matrix_world, Z, -.05 * min_size, move_only = False)
+    
+    #put the data in
+    tmp_bme.to_mesh(TempOb.data)
+    tmp_bme.free()
+    
+    #Now deal with the tray which is to be remeshed.
+    #first, solidify all of their
+    
+    #flatten. Since oriented into view, this flattens it
+    for v in tray_bme.verts:
+        v.co[2] = 0.00
+    
+    #triangle fill
+    geom = bmesh.ops.triangle_fill(tray_bme, use_beauty = True, edges = tray_bme.edges)
+    
+    solid_geom = [f for f in tray_bme.faces] + [v for v in tray_bme.verts] + [ed for ed in tray_bme.edges]
+    new_geom = bmesh.ops.solidify(tray_bme, geom = solid_geom, thickness = grid_predict * 0.75)
+    
+    
+    tray_bme.to_mesh(tray_me)
+    tray_bme.free()
+    
+    context.scene.objects.link(TrayOb)
+    mod = TrayOb.modifiers.new('Remesh', type = 'REMESH')
+    mod.octree_depth = oct
+    mod.scale = .9
+    
+    tray_bme = bmesh.new()
+    final_me = TrayOb.to_mesh(context.scene, apply_modifiers = True, settings = 'PREVIEW')
+    tray_bme.from_mesh(final_me)
+    tray_bme.verts.ensure_lookup_table()
+    to_delete = []
+    for v in tray_bme.verts:
+        if v.co[2] > .0001 or v.co[2] < -.0001:
+            to_delete.append(v)
+    
+    bmesh.ops.delete(tray_bme, geom = to_delete, context = 1)
+    
+    TrayOb.modifiers.remove(modifier = mod)
+    tray_bme.to_mesh(TrayOb.data)
+    tray_bme.free()
+       
+    #TODOD, manually with ray cast
+    swrap = TrayOb.modifiers.new('Shrinkwrap', type = 'SHRINKWRAP')
+    swrap.wrap_method = 'PROJECT'
+    swrap.use_project_z = True
+    swrap.use_negative_direction = True
+    swrap.use_positive_direction = True
+    swrap.target = TempOb
+    
+
+    #tray_me = TrayOb.to_mesh(context.scene, apply_modifiers = True, settings = 'PREVIEW')
+    
+    #TrayOb.data = tray_me
+    #TrayOb.modifiers.remove(modifier = swrap)
+    if reparent:
+        TrayOb.update_tag()
+        sce.update()
+        odcutils.parent_in_place(TrayOb, loop_obj.parent)
+
+    return TrayOb
     
 def link_selection_to_splint(context, odc_splint,clear = False, debug = False):
     #TODO check univ vs intl system

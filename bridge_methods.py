@@ -93,9 +93,6 @@ def bridge_from_selection(context, debug = False):
     names = [tooth.name for tooth in teeth]
     
     #check axes
-    
-    
-    
     univ_names = [odcutils.intntl_universal[int(name)] for name in names]
     univ_names.sort()
     bridge_start = int(min(univ_names))

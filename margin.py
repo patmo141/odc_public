@@ -615,7 +615,13 @@ class OPENDENTAL_OT_accept_margin(bpy.types.Operator):
             self.report({'ERROR'},'No Margin to accept!')
             return {'CANCELLED'}
         if axis not in bpy.data.objects:
-            self.report({'ERROR'}, 'No insertion axis, please define insertion axis')
+            self.report({'ERROR'}, 'No insertion axis for ' + a + ', please define insertion axis')
+            print(tooth.margin)
+            print(tooth.axis)
+            print(tooth.name)
+            
+            print([ob.name for ob in bpy.data.objects])
+            
             return {'CANCELLED'}
         
         

@@ -438,13 +438,19 @@ class OPENDENTAL_OT_add_tooth_restoration(bpy.types.Operator):
     
     def execute(self, context):
 
+        if not self.properties.name: #eg, it was invoked
+            self.properties.name = str(teeth[int(self.properties.ob_list)])
+            
+        if self.properties.name in [tooth.name for tooth in context.scene.odc_teeth]:
+            self.report({'ERROR'},'That tooth is already planned!  No duplicates allowed')
+            return {'CANCELLED'}
+            
         my_item = bpy.context.scene.odc_teeth.add()
         indx = int(self.properties.ob_list)
         
         print(indx)
         
-        if not self.properties.name: #eg, it was invoked
-            self.properties.name = str(teeth[int(self.properties.ob_list)])
+        
         #my_item.abutment = self.properties.abutment
         my_item.name = self.properties.name
         my_item.rest_type = self.properties.rest_type
