@@ -682,8 +682,10 @@ def implant_selection(context):
     if not hasattr(sce, 'odc_props'): return implants
     if len(context.scene.odc_implants) == 0: return implants
     
-    b = context.user_preferences.addons['odc_public'].preferences.behavior
-    behave_mode = context.user_preferences.addons['odc_public'].preferences.behavior_modes[int(b)]
+    settings = get_settings()
+    b = settings.behavior
+    behave_mode = settings.behavior_modes[int(b)]
+    
     if len(context.scene.odc_implants) == 0:
         return implants
     
@@ -2339,6 +2341,7 @@ def extrude_bmesh_loop(bme, bmedges, mx, axis, res, move_only = False):
     curl = 0
     N = len(verts)
     lerps = []
+
     for n, v in enumerate(vcoords):
         
         np1 = (n + 1) % N
@@ -2360,7 +2363,7 @@ def extrude_bmesh_loop(bme, bmedges, mx, axis, res, move_only = False):
         ang = rot.angle
         curl = curl + ang*sign
         lerps.append(V0.lerp(V1,.5))
-        
+
     clockwise = 1
 
     if curl < 0:
@@ -2375,7 +2378,7 @@ def extrude_bmesh_loop(bme, bmedges, mx, axis, res, move_only = False):
         trans.normalize()
         delta = scale_vec_mult(trans, iscl)
         delta *= res       
-        v.co += delta       
+        v.co +=  delta       
 
     print("moved verts in %f seconds" % (time.time()-start))
                     
