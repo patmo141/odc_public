@@ -1164,7 +1164,7 @@ class OPENDENTAL_OT_pointic_from_crown(bpy.types.Operator):
             for tooth in teeth:
                 if tooth.contour and tooth.contour in bpy.data.objects:
                     shell = bpy.data.objects[tooth.contour]
-                    
+                    tooth.rest_type = '1'  #change the rest type to pontic
                     crown_methods.pontificate(context, tooth, shell, self.p_types[int(self.p_type)], self.offset)
                        
                             

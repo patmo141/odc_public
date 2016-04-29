@@ -114,18 +114,28 @@ class OPENDENTAL_OT_bridge_boolean(bpy.types.Operator):
             else:
                 right_teeth.append(tooth)
 
+        print('left teeth')
+        print([tooth.name for tooth in left_teeth])
+        def get_key(tooth):
+            return tooth.name
+        print([tooth.name for tooth in sorted(left_teeth, key = get_key, reverse = True)])
         if len(left_teeth):
-            left_contours = [bpy.data.objects.get(tooth.contour) for tooth in left_teeth]    
+            left_teeth_sorted = [tooth for tooth in sorted(left_teeth, key = get_key, reverse = True)]
+            left_contours = [bpy.data.objects.get(tooth.contour) for tooth in left_teeth_sorted]    
             left_base_ob = left_contours[0]
+            print(left_base_ob.name)
             left_bridge_me = left_base_ob.to_mesh(context.scene, apply_modifiers = True, settings = 'PREVIEW')
             left_bridge_ob = bpy.data.objects.new(odc_bridge.name, left_bridge_me)
             left_bridge_ob.matrix_world = left_base_ob.matrix_world
             context.scene.objects.link(left_bridge_ob)
             
+            print(left_bridge_ob.name)
             for i in range(1, len(left_contours)):
+                print('adding boolean modifier')
                 mod = left_bridge_ob.modifiers.new(str(i), 'BOOLEAN')
                 mod.operation = 'INTERSECT'
                 mod.object = left_contours[i]
+                print(left_contours[i].name)
             
             left_final_me = left_bridge_ob.to_mesh(context.scene, apply_modifiers = True, settings = 'PREVIEW')
             mods = [mod for mod in left_bridge_ob.modifiers]
@@ -136,7 +146,8 @@ class OPENDENTAL_OT_bridge_boolean(bpy.types.Operator):
             odc_bridge.bridge = left_bridge_ob.name
             
         if len(right_teeth):
-            right_contours = [bpy.data.objects.get(tooth.contour) for tooth in right_teeth]    
+            right_teeth_sorted = [tooth for tooth in sorted(right_teeth, key = get_key, reverse = True)]
+            right_contours = [bpy.data.objects.get(tooth.contour) for tooth in right_teeth_sorted]    
             right_base_ob = right_contours[0]
             right_bridge_me = right_base_ob.to_mesh(context.scene, apply_modifiers = True, settings = 'PREVIEW')
             right_bridge_ob = bpy.data.objects.new(odc_bridge.name, right_bridge_me)
