@@ -560,6 +560,10 @@ class OPENDENTAL_OT_keep_shape(bpy.types.Operator):
                     
                     if mod.type =='LATTICE':
                         to_delete.append(mod.object)
+                        
+            for mod in ob.modifiers:
+                if mod.type == 'MULTIRES':
+                    bpy.ops.object.multires_base_apply(modifier = mod.name)
 
                 
         bpy.ops.object.select_all(action='DESELECT')        
