@@ -695,11 +695,11 @@ class OPENDENTAL_OT_seat_to_margin(bpy.types.Operator):
                 if not condition_1:
                     reason += 'No full contour, please "Get Crown Form."  '
                 if not condition_2:
-                    reason += 'No margin, pleas "Mark Margin."  '
+                    reason += 'No margin, please "Mark Margin."  '
                 if not condition_3:
                     reason += 'Margin still provisional, please "Accept Margin."'
                     
-                not_valid.append([reason])
+                not_valid.append(reason)
             
         if len(not_valid):
             for reason in not_valid:
