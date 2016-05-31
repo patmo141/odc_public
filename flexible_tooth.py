@@ -154,6 +154,7 @@ class OPENDENTAL_OT_hook_deform(bpy.types.Operator):
                     bpy.ops.object.select_all(action = 'DESELECT')
                     context.scene.objects.active = ob
                     ob.select = True
+                    N_mods = len(ob.modifiers)
                     for grp, modname in  zip(v_islands,modnames):
                         bpy.ops.object.mode_set(mode = 'EDIT')
                         bpy.ops.mesh.select_all(action = 'DESELECT')
@@ -183,7 +184,9 @@ class OPENDENTAL_OT_hook_deform(bpy.types.Operator):
                         
                         mod = ob.modifiers.new(modname, type='HOOK')         
                         mod.object = hook
-                        bpy.ops.object.modifier_move_up(modifier = mod.name)
+                        
+                        for n in range(0, N_mods):
+                            bpy.ops.object.modifier_move_up(modifier = mod.name)
                         bpy.ops.object.mode_set(mode = 'EDIT')
                         bpy.ops.object.hook_reset(modifier = mod.name)
                         bpy.ops.object.hook_assign(modifier=mod.name)
@@ -228,7 +231,8 @@ class OPENDENTAL_OT_hook_deform(bpy.types.Operator):
                     mod.vertex_group = 'Anchor'
                     mod.iterations = 20
                     
-                    bpy.ops.object.modifier_move_up(modifier = "flexitooth")
+                    for n in range(0, N_mods):      
+                        bpy.ops.object.modifier_move_up(modifier = "flexitooth")
                     bpy.ops.object.mode_set(mode = 'EDIT')
                     bpy.ops.object.laplaciandeform_bind(modifier = "flexitooth")
                     bpy.ops.object.mode_set(mode = 'OBJECT')    
@@ -238,7 +242,7 @@ class OPENDENTAL_OT_hook_deform(bpy.types.Operator):
                             mod.show_expanded = False
                             
                             
-                    ob.modifiers.new
+                    #ob.modifiers.new
         
         return {'FINISHED'}
 
