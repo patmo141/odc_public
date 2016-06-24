@@ -1,5 +1,6 @@
 import bpy
 from mathutils import Vector
+from common_utilities import bversion
 
 upper_molar23 = [[198, 89,77], #central pit
            [241, 87, 240,239], #MMR
@@ -168,8 +169,11 @@ class OPENDENTAL_OT_hook_deform(bpy.types.Operator):
                         hook = bpy.data.objects.new(modname, None)
                         context.scene.objects.link(hook)
                         
-
-                        new_loc, no, ind = ob.closest_point_on_mesh(center)
+                        if bversion() < '002.077.000':
+                            new_loc, no, ind = ob.closest_point_on_mesh(center)
+                        
+                        else:
+                            ok, new_loc, no, ind = ob.closest_point_on_mesh(center)
                         world_loc = mx * new_loc
                     
 

@@ -15,10 +15,15 @@ import addon_utils
 from mathutils import Vector, Matrix, Quaternion
 from bpy_extras.mesh_utils import edge_loops_from_edges
 from mathutils.geometry import intersect_point_line
-
+from mathutils.bvhtree import BVHTree
 #odc imports
-#from  . 
+
 import odcutils
+from odcutils import offset_bmesh_edge_loop
+from bmesh_fns import join_bmesh_map
+from mesh_cut import edge_loops_from_bmedges, space_evenly_on_path
+import bmesh
+from common_utilities import bversion
 
 def pontificate(context, tooth, shell, p_type, offset):
     
@@ -214,8 +219,10 @@ def prep_from_shell(context, shell, axis_mx, shoulder_width = .75, reduction = 1
     context.scene.update()
     if len(shell.modifiers):
         for v in prep.data.vertices:
-            v.co = prep.matrix_world.inverted() * shell.matrix_world * shell.closest_point_on_mesh(shell.matrix_world.inverted() * prep.matrix_world * v.co)[0]
-    
+            if bversion() < '002.077.000':
+                v.co = prep.matrix_world.inverted() * shell.matrix_world * shell.closest_point_on_mesh(shell.matrix_world.inverted() * prep.matrix_world * v.co)[0]
+            else:
+                v.co = prep.matrix_world.inverted() * shell.matrix_world * shell.closest_point_on_mesh(shell.matrix_world.inverted() * prep.matrix_world * v.co)[1]
     context.scene.update()           
     bpy.ops.object.select_all(action='DESELECT')
     context.scene.objects.active = prep
@@ -294,8 +301,167 @@ def prep_from_shell(context, shell, axis_mx, shoulder_width = .75, reduction = 1
         
     return prep
 
+def calc_intaglio(context, sce, tooth, chamfer, gap, holy_zone, no_undercuts = True, debug = False):
+    if debug:
+        start = time.time()
+    #Get ahold of all relevant tooth items
+    margin = tooth.margin
+    prep = tooth.prep_model
+    axis = tooth.axis
+    restoration = tooth.contour #TODO make sure this is  handled later
+    pmargin = tooth.pmargin
+    
+    
+    Prep = bpy.data.objects[prep]
+    prep_bvh = BVHTree.FromObject(Prep, sce)
+    prep_imx = Prep.matrix_world.inverted()
+    prep_mx = Prep.matrix_world
+    
+    Axis = bpy.data.objects[axis]
+    #we wil use these to control our translations
+    axis_quat = Axis.matrix_world.to_quaternion()
+    axis_mx = Axis.matrix_world
+    axis_imx = axis_mx.inverted()
+    axis_z = axis_quat * Vector((0,0,1))
+    
+    Restoration = bpy.data.objects[restoration]
+    mx = Restoration.matrix_world
+    imx = Restoration.matrix_world.inverted()
+    
+    #rays transform straightforward inverse, unsure on normals
+    local_z = imx.to_3x3() * axis_z
+    local_z.normalize()
+    
+    #get the non manifold edge of the crown and delete all other geometry 
+    intag_bme = bmesh.new()
+    intag_bme.from_object(Restoration, context.scene)
+    intag_bme.verts.ensure_lookup_table()
+    intag_bme.edges.ensure_lookup_table()
+    
+    non_man_eds = [ed for ed in intag_bme.edges if not ed.is_manifold]
+    non_man_verts = set()
+    for ed in non_man_eds:
+        non_man_verts.add(ed.verts[0])
+        non_man_verts.add(ed.verts[1])
+    
+    to_del = [v for v in intag_bme.verts if v not in non_man_verts]        
+    bmesh.ops.delete(intag_bme, geom = to_del, context = 1)
+    
+    intag_bme.edges.ensure_lookup_table()
+    intag_bme.verts.ensure_lookup_table()
+    
+    #space the margin out evenly
+    loops = edge_loops_from_bmedges(intag_bme, [ed.index for ed in non_man_eds])
+    
+    if len(loops) > 1:
+        print('you had another hole in your tooth, go see a dentist')
+        print('there can noe be any holes in the tooth mesh for this step')
+        return
+    
+    vs = [intag_bme.verts[i] for i in loops[0][:-1]]
+    eds = [(0,1),(1,0)]  #fake edges...makes them cyclic
+    vert_path = [v.co for v in vs] + [vs[0].co] #cyclic for space evenly calculation
+    spaced_coords, eds = space_evenly_on_path(vert_path, eds, len(vert_path)-1 , shift = 0, debug = False)
+    
+    for i, loc in enumerate(spaced_coords):
+        vs[i].co = loc
 
-def calc_intaglio(context, sce, tooth, chamfer, gap, holy_zone, debug = False):
+    #extrude the edge perpendicular to insertion axis the holy zone width and maintain quads
+    
+    min_ed = min(non_man_eds, key = lambda ed: ed.calc_length())
+    offset = .75*min_ed.calc_length()
+    
+    print('offset is %f' % offset)
+    print('holy zone width is %f' % holy_zone)
+    print('%i edge loops in holy zone' % math.ceil(holy_zone/offset))
+    
+    hz_verts = []
+    new_bmedges = non_man_eds
+    for i in range(0, math.ceil(holy_zone/offset)):
+        ret = bmesh.ops.extrude_edge_only(intag_bme, edges = new_bmedges, use_select_history = False)
+        new_bmverts = [ele for ele in ret['geom'] if isinstance(ele, bmesh.types.BMVert)]
+        hz_verts += new_bmverts
+        
+        new_bmedges = [ele for ele in ret['geom'] if isinstance(ele, bmesh.types.BMEdge)]
+        new_bmfaces = [ele for ele in ret['geom'] if isinstance(ele, bmesh.types.BMFace)]
+    
+    
+        offset_bmesh_edge_loop(intag_bme, [ed.index for ed in new_bmedges], local_z, offset, debug = False)
+        
+        loops = edge_loops_from_bmedges(intag_bme, [ed.index for ed in new_bmedges])
+        vs = [intag_bme.verts[i] for i in loops[0]]
+        fake_eds = [(0,1),(1,0)]
+        vert_path = [v.co for v in vs] #cyclic for space evenly calculation
+        spaced_coords, eds = space_evenly_on_path(vert_path, fake_eds, len(vert_path)-1 , shift = 0, debug = False)
+    
+        for n, loc in enumerate(spaced_coords):
+            co = loc + 1.5 * chamfer * offset * local_z
+            snap, no, ind, d = prep_bvh.find_nearest(prep_imx*mx*co)
+            vs[n].co = imx * prep_mx * snap
+            
+        if i == 0:
+            #get faces oreinted correctly on first pass
+            print('recalcing normals')
+            bmesh.ops.recalc_face_normals(intag_bme, faces = new_bmfaces)
+    
+    
+    bmeds_inds = [ed.index for ed in new_bmedges]
+    filled_vs = odcutils.fill_bmesh_loop_scale(intag_bme, bmeds_inds, offset, debug = False)
+    
+    for v in filled_vs:
+        v.co += 15 * local_z
+    
+    hz_inds = [v.index for v in hz_verts]
+    filled_inds = [v.index for v in filled_vs]
+
+    intag_me = bpy.data.meshes.new(tooth.name +'_intaglio')
+    intag_ob = bpy.data.objects.new(tooth.name + 'intaglio', intag_me)
+    intag_ob.matrix_world = mx
+    intag_bme.to_mesh(intag_me)
+    
+    #change intag local coords so that local z is aligned to
+    #insertion axis.
+    intag_ob.data.transform(mx.to_3x3().to_4x4())
+    intag_ob.data.transform(axis_imx.to_3x3().to_4x4())
+    intag_ob.matrix_world = axis_mx.to_3x3().to_4x4()
+    intag_ob.location = mx.to_translation()
+        
+    context.scene.objects.link(intag_ob)
+    intag_bme.free()
+    
+    hz_group = intag_ob.vertex_groups.new(name = 'Holy Zone')
+    hz_group.add(hz_inds, 1, 'ADD')
+    filled_group = intag_ob.vertex_groups.new(name = 'Filled Zone')
+    filled_group.add(filled_inds, 1, 'ADD')
+    
+    mod = intag_ob.modifiers.new('Project Undercuts', 'SHRINKWRAP')
+    mod.wrap_method = 'PROJECT'
+    mod.use_negative_direction = True
+    mod.use_positive_direction = False
+    mod.use_project_z = True
+    mod.target = Prep
+    mod.vertex_group = 'Filled Zone'
+    
+    if no_undercuts:
+        mod = intag_ob.modifiers.new('Smooth', 'SMOOTH') 
+        mod.iterations = 20
+        mod.vertex_group = 'Filled Zone'
+    
+    mod = intag_ob.modifiers.new('Cement Gap', 'SHRINKWRAP')
+    mod.wrap_method = 'NEAREST_SURFACEPOINT'
+    mod.target = Prep
+    mod.vertex_group = 'Filled Zone'
+    mod.offset = gap
+    mod.use_keep_above_surface = True
+    
+    Restoration.hide = True
+    tooth.intaglio = intag_ob.name
+     
+    return  
+    
+    
+        
+def calc_intaglio2(context, sce, tooth, chamfer, gap, holy_zone, debug = False):
     if debug:
         start = time.time()
     #Get ahold of all relevant tooth items
@@ -1476,11 +1642,115 @@ def make_solid_restoration(context, tooth, debug = False):
             print("%d non manifold verts remaining at iteration %d" % (len(sel_verts), n))
         res += .02
         n += 1
-        
+    if context.mode != 'OBJECT':
+        bpy.ops.object.mode_set(mode = 'OBJECT')    
     if debug:
         duration = start - time.time()
         print('Welded solid model for tooth %s in %f seconds' % (tooth.name, duration))
-                    
+
+
+def make_solid_restoration2(context, tooth, debug = False):
+    
+    if debug:
+        start = time.time()
+         
+    sce = context.scene
+    if  bpy.context.mode != 'OBJECT':
+        bpy.ops.object.mode_set(mode='OBJECT')
+        
+
+    restoration=tooth.contour  #TODO: fix restoration vs contour
+    Restoration=bpy.data.objects[restoration]
+    
+    intaglio=tooth.intaglio
+    Intaglio = bpy.data.objects[intaglio]
+    i_bme = bmesh.new()
+    i_bme.from_object(Intaglio, context.scene)
+    intag_bme = i_bme.copy()
+    i_bme.free()
+    
+    intag_bme.edges.ensure_lookup_table()
+    intag_bme.verts.ensure_lookup_table()
+    intag_bme.faces.ensure_lookup_table()
+    
+    #get modifier applied version of crown, without altering it!
+    c_bme = bmesh.new()
+    c_bme.from_object(Restoration, context.scene)
+    crown_bme = c_bme.copy()
+    c_bme.free()
+    
+    crown_bme.edges.ensure_lookup_table()
+    crown_bme.verts.ensure_lookup_table()
+    crown_bme.faces.ensure_lookup_table()                                
+    
+    
+    for i in range(0,4):
+        non_man_eds = [ed for ed in crown_bme.edges if not ed.is_manifold]
+        bmesh.ops.delete(crown_bme, geom = non_man_eds, context = 2)
+            
+        non_man_vs = [v for v in crown_bme.verts if not v.is_manifold]
+        bmesh.ops.delete(crown_bme, geom = non_man_vs, context = 1)
+            
+        #crown_bme.edges.ensure_lookup_table()
+        #crown_bme.verts.ensure_lookup_table()
+        #crown_bme.faces.ensure_lookup_table()
+    crown_bme.verts.index_update()
+    crown_bme.verts.ensure_lookup_table()
+    
+    #now that bottom rows deleted, join the intaglio data in
+    join_bmesh_map(intag_bme, crown_bme, 
+               src_trg_map = None,
+               src_mx = Intaglio.matrix_world, 
+               trg_mx = Restoration.matrix_world)
+    
+    
+    crown_bme.verts.ensure_lookup_table()
+    crown_bme.edges.ensure_lookup_table()
+    crown_bme.faces.ensure_lookup_table()
+    
+    
+    non_man = [ed for ed in crown_bme.edges if not ed.is_manifold]
+    current_vs = set(crown_bme.edges)
+    geom = bmesh.ops.bridge_loops(crown_bme, edges = non_man, use_pairs = True)
+    new_faces = geom['faces']
+    new_edges = geom['edges']
+    
+    ret = bmesh.ops.subdivide_edges(crown_bme, edges = new_edges, cuts = 3)#, interp_mode, smooth, cuts, profile_shape, profile_shape_factor)
+    vs = [ele for ele in ret['geom_inner'] if isinstance(ele, bmesh.types.BMVert)]
+    crown_bme.verts.ensure_lookup_table()
+    vs_inds = [v.index for v in vs]
+    
+    
+    bmesh.ops.recalc_face_normals(crown_bme, faces = crown_bme.faces[:])        
+            
+    #mesh bridge the ring around the margin
+    solid_rest_me = bpy.data.meshes.new(tooth.name + "_SolidResetoration")
+    Solid_Restoration = bpy.data.objects.new(tooth.name + "_SolidResetoration", solid_rest_me)  
+    Solid_Restoration.matrix_world = Restoration.matrix_world
+    
+    crown_bme.to_mesh(solid_rest_me)
+    tooth.solid = Solid_Restoration.name
+    
+    cej_group = Solid_Restoration.vertex_groups.new(name = 'CEJ')
+    cej_group.add(vs_inds, 1, 'ADD')
+    
+    context.scene.objects.link(Solid_Restoration)    
+    
+    
+    mod = Solid_Restoration.modifiers.new('Shrink', 'SHRINKWRAP')
+    mod.wrap_method = 'NEAREST_SURFACEPOINT'
+    mod.target = Restoration
+    mod.vertex_group = 'CEJ'
+    
+    
+    
+    if debug:
+        duration = start - time.time()
+        print('Welded solid model for tooth %s in %f seconds' % (tooth.name, duration))
+    
+    crown_bme.free()
+    intag_bme.free()
+                     
 def check_contacts(context, tooth, min_d, max_d, debug = False):
     '''
     #TODO: docstring

@@ -15,6 +15,7 @@ from mesh_cut import cross_section_2seeds_ver1, path_between_2_points, grow_sele
 import math
 import random
 import time
+from common_utilities import bversion
 
 class PolyLineKnife(object):
     '''
@@ -101,8 +102,11 @@ class PolyLineKnife(object):
 
         mx = self.cut_ob.matrix_world
         imx = mx.inverted()
-        loc, no, face_ind = self.cut_ob.ray_cast(imx * ray_origin, imx * ray_target)
-
+        if bversion() < '002.077.000':
+            loc, no, face_ind = self.cut_ob.ray_cast(imx * ray_origin, imx * ray_target)
+        else:
+            ok, loc, no, face_ind = self.cut_ob.ray_cast(imx * ray_origin, imx * ray_target - imx*ray_origin)
+        
         if face_ind == -1:        
             self.grab_cancel()  
         else:
@@ -134,8 +138,12 @@ class PolyLineKnife(object):
         ray_target = ray_origin + (view_vector * 1000)
         mx = self.cut_ob.matrix_world
         imx = mx.inverted()
-        loc, no, face_ind = self.cut_ob.ray_cast(imx * ray_origin, imx * ray_target)
 
+        if bversion() < '002.077.000':
+            loc, no, face_ind = self.cut_ob.ray_cast(imx * ray_origin, imx * ray_target)
+        else:
+            ok, loc, no, face_ind = self.cut_ob.ray_cast(imx * ray_origin, imx * ray_target - imx*ray_origin)
+            
         if face_ind == -1: 
             self.selected = -1
             return
@@ -255,8 +263,10 @@ class PolyLineKnife(object):
         ray_target = ray_origin + (view_vector * 1000)
         mx = self.cut_ob.matrix_world
         imx = mx.inverted()
-        loc, no, face_ind = self.cut_ob.ray_cast(imx * ray_origin, imx * ray_target)
-
+        if bversion() < '002.077.000':
+            loc, no, face_ind = self.cut_ob.ray_cast(imx * ray_origin, imx * ray_target)
+        else:
+            ok, loc, no, face_ind = self.cut_ob.ray_cast(imx * ray_origin, imx * ray_target - imx*ray_origin)
         if face_ind != -1:
             self.face_seed = face_ind
             print('face selected!!')
@@ -627,7 +637,11 @@ class CurveDataManager(object):
         
         hit = False
         if self.snap_type == 'SCENE':
-            res, obj, omx, loc, no = context.scene.ray_cast(ray_origin, ray_target)
+            
+            if bversion() < '002.077.000':
+                res, obj, omx, loc, no = context.scene.ray_cast(ray_origin, ray_target)
+            else:
+                res, loc, no, ind, obj, mx = context.scene.ray_cast(ray_origin, view_vector)
             mx = Matrix.Identity(4)
             if res:
                 hit = True
@@ -644,9 +658,16 @@ class CurveDataManager(object):
             mx = self.snap_ob.matrix_world
             imx = mx.inverted()
             loc, no, face_ind = self.snap_ob.ray_cast(imx * ray_origin, imx * ray_target)
-            if face_ind != -1:
-                hit = True
-                
+            
+            if bversion() < '002.077.000':
+                loc, no, face_ind = self.snap_ob.ray_cast(imx * ray_origin, imx * ray_target)
+                if face_ind != -1:
+                    hit = True
+            else:
+                ok, loc, no, face_ind = self.snap_ob.ray_cast(imx * ray_origin, imx * ray_target - imx*ray_origin)
+                if ok:
+                    hit = True
+   
         if not hit:
             self.grab_cancel()
             
@@ -689,9 +710,12 @@ class CurveDataManager(object):
         hit = False
         if self.snap_type == 'SCENE':
             mx = Matrix.Identity(4)  #loc is given in world loc...no need to multiply by obj matrix
-            res, obj, omx, loc, no = context.scene.ray_cast(ray_origin, ray_target)
+            if bversion() < '002.077.000':
+                res, obj, omx, loc, no = context.scene.ray_cast(ray_origin, ray_target)  #changed in 2.77
+            else:
+                res, loc, no, ind, obj, mx = context.scene.ray_cast(ray_origin, view_vector)
+            
             hit = res
-        
             if not hit:
                 #cast the ray into a plane a
                 #perpendicular to the view dir, at the last bez point of the curve
@@ -710,7 +734,16 @@ class CurveDataManager(object):
         elif self.snap_type == 'OBJECT':
             mx = self.snap_ob.matrix_world
             imx = mx.inverted()
-            loc, no, face_ind = self.snap_ob.ray_cast(imx * ray_origin, imx * ray_target)
+            
+            if bversion() < '002.077.000':
+                loc, no, face_ind = self.snap_ob.ray_cast(imx * ray_origin, imx * ray_target)
+                if face_ind != -1:
+                    hit = True
+            else:
+                ok, loc, no, face_ind = self.snap_ob.ray_cast(imx * ray_origin, imx * ray_target - imx*ray_origin)
+                if ok:
+                    hit = True
+            
             if face_ind != -1:
                 hit = True
         

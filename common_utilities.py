@@ -39,6 +39,9 @@ from mathutils import Vector, Matrix, Quaternion
 import bpy
 from bpy_extras.view3d_utils import location_3d_to_region_2d, region_2d_to_vector_3d, region_2d_to_location_3d, region_2d_to_origin_3d
 
+def bversion():
+    bversion = '%03d.%03d.%03d' % (bpy.app.version[0],bpy.app.version[1],bpy.app.version[2])
+    return bversion
 
 class AddonLocator(object):
     def __init__(self, f=None):
@@ -223,8 +226,12 @@ def ray_cast_region2d(region, rv3d, screen_coord, ob, settings):
         print('start:  ' + str(ray_start_local))
         print('target: ' + str(ray_target_local))
     
-    hit = ob.ray_cast(ray_start_local, ray_target_local)
-    
+    if bversion() >= '002.077.000':
+        hit = ob.ray_cast(ray_start_local, (ray_target_local - ray_start_local))
+        
+    else:
+        hit = ob.ray_cast(ray_start_local, ray_target_local)
+     
     return (ray_vector, hit)
 
 
@@ -244,8 +251,19 @@ def ray_cast_path(context, ob, screen_coords):
     else:
         rays = [(get_ray_origin(ray_o, ray_v, ob),get_ray_origin(ray_o, -ray_v, ob)) for ray_o,ray_v in rays]
     
-    hits = [ob.ray_cast(imx * ray_o, imx * ray_v) for ray_o,ray_v in rays]
-    world_coords = [mx*co for co,no,face in hits if face != -1]
+    
+
+    if bversion() < '002.077.00':
+        hits = [ob.ray_cast(imx * ray_o, imx * ray_v) for ray_o,ray_v in rays]
+    else:
+        hits = [ob.ray_cast(imx * ray_o, imx * ray_v - imx * ray_o) for ray_o,ray_v in rays]
+        
+        
+    if bversion() <= '002.076.000':
+        world_coords = [mx*co for co,no,face in hits if face != -1]
+    else:
+        world_coords = [mx*co for ok,co,no,face in hits if ok]
+
     return world_coords
 
 def ray_cast_stroke(context, ob, stroke):
@@ -271,7 +289,13 @@ def ray_cast_stroke(context, ob, stroke):
     if (bver < '002.072.000') and not rv3d.is_perspective: mult *= -1
     
     sten = [(imx*(o-d*back*mult), imx*(o+d*mult)) for o,d in rays]
-    hits = [ob.ray_cast(st,st+(en-st)*1000) for st,en in sten]
+    
+    if bver < '002.077.00':
+        hits = [ob.ray_cast(st,st+(en-st)*1000) for st,en in sten]
+    else:
+        hits = [ob.ray_cast(st,(en-st)) for st,en in sten]
+    
+    
     world_stroke = [(mx*hit[0],stroke[i][1])  for i,hit in enumerate(hits) if hit[2] != -1]
     
     return world_stroke
@@ -331,7 +355,10 @@ def ray_cast_visible(verts, ob, rv3d):
         source = [imx*(vert+100*view_dir) for vert in verts]
         target = [imx*(vert+0.01*view_dir) for vert in verts]
     
-    return [ob.ray_cast(s,t)[2]==-1 for s,t in zip(source,target)]
+    if bversion() < '002.077.00':
+        return [ob.ray_cast(s,t)[2]==-1 for s,t in zip(source,target)]
+    else:
+        return [ob.ray_cast(s,t-s)[3]==-1 for s,t in zip(source,target)]
 
 def get_ray_origin_target(region, rv3d, screen_coord, ob):
     ray_vector = region_2d_to_vector_3d(region, rv3d, screen_coord).normalized()
@@ -363,7 +390,12 @@ def ray_cast_world_size(region, rv3d, screen_coord, screen_size, ob, settings):
     
     ray_start_local  = imx * ray_origin
     ray_target_local = imx * ray_target
-    pt_local,no,idx  = ob.ray_cast(ray_start_local, ray_target_local)
+    
+    if bversion() < '002.077.000':
+        pt_local,no,idx  = ob.ray_cast(ray_start_local, ray_target_local)
+    else:
+        ok, loc, no, idx = ob.ray_cast(ray_start_local, ray_target_local - ray_start_local)
+    
     if idx == -1: return float('inf')
     
     pt = mx * pt_local

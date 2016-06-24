@@ -17,6 +17,7 @@ import odcmenus.menu_utils as menu_utils
 import odcmenus.button_data as button_data
 from curve import CurveDataManager
 from textbox import TextBox
+from common_utilities import bversion
 
 '''
 This module handles operators for the crown (and maybe bridge) functionality of ODC
@@ -331,7 +332,11 @@ class OPENDENTAL_OT_insertion_axis(bpy.types.Operator):
         view_vector = view3d_utils.region_2d_to_vector_3d(context.region, rv3d, coord)
         ray_origin = view3d_utils.region_2d_to_origin_3d(context.region, rv3d, coord)
         ray_target = ray_origin + (view_vector * 1000)
-        res, obj, mx, loc, no = context.scene.ray_cast(ray_origin, ray_target)
+        if bversion() < '002.077.000':
+            res, obj, loc, no, mx = context.scene.ray_cast(ray_origin, ray_target)
+        else:
+            res, loc, no, ind, obj, mx = context.scene.ray_cast(ray_origin, view_vector)
+        
         if res:
             ob.location = loc
         else:
@@ -730,6 +735,8 @@ class OPENDENTAL_OT_calculate_inside(bpy.types.Operator):
     holy_zone = bpy.props.FloatProperty(name="Holy Zone Width", description="", default=.4, min=.2, max=2, step=5, precision=1, options={'ANIMATABLE'})
     chamfer = bpy.props.FloatProperty(name="Chamfer", description="0 = shoulder 1 = feather", default=.2, min=0, max=1, step=2, precision=2, options={'ANIMATABLE'})
     gap = bpy.props.FloatProperty(name="Gap Thickness", description="thickness required for cement", default=0.07, min=.01, max=.5, step=2, precision=2, options={'ANIMATABLE'})
+    no_undercuts = bpy.props.BoolProperty(name="No Undercuts", description="Uncheck if there are significant undercuts", default=True)
+
     @classmethod
     def poll(cls,context):
         #restoration exists and is in scene
@@ -824,10 +831,14 @@ class OPENDENTAL_OT_crown_cervical_convergence(bpy.types.Operator):
         row.prop(self, "ang")
         
 class OPENDENTAL_make_solid_restoration(bpy.types.Operator):
-    ''''''
+    '''
+    joins the shell and intaglio to make a millable/printable watertight mesh
+    '''
     bl_idname = 'opendental.make_solid_restoration'
     bl_label = "Make Solid Restoration"
+    bl_options = {'REGISTER','UNDO'}
     
+    method = bpy.props.IntProperty(default = 1)
     @classmethod
     def poll(cls, context):
         #restoration exists and is in scene
@@ -847,7 +858,10 @@ class OPENDENTAL_make_solid_restoration(bpy.types.Operator):
         context.scene.layers[0] = True
         
         for tooth in teeth:
-            crown_methods.make_solid_restoration(context, tooth, debug = dbg)
+            if self.method == 0:
+                crown_methods.make_solid_restoration(context, tooth, debug = dbg)
+            else:
+                crown_methods.make_solid_restoration2(context, tooth, debug = dbg)
         
         for i, layer in enumerate(layers_copy):
             context.scene.layers[i] = layer

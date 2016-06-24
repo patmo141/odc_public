@@ -19,10 +19,11 @@ import random
 import bmesh
 
 import mesh_cut
+from mesh_cut import edge_loops_from_bmedges
 from mathutils import Vector, Matrix, Quaternion
 from bpy_extras.mesh_utils import edge_loops_from_edges
 from mathutils.geometry import intersect_point_line
-
+from common_utilities import bversion
 
 #Borrowed from retopoflow @CGCookie, Jonathan Wiliamson, Jon Denning, Patrick Moore
 def get_settings():
@@ -42,7 +43,6 @@ def get_settings():
    
     return get_settings.cached_settings
 get_settings.cached_settings = None
-
 
 #global universal_intntl
 universal_intntl = {}
@@ -219,6 +219,24 @@ def get_com(me,verts,mx):
     l = len(verts)
     for v in verts:
         COM = COM + me.vertices[v].co  
+    COM = mx  * (COM/l)
+
+    return COM
+
+def get_com_bme(bme,vert_inds,mx):
+    '''
+    args:
+        me - the Blender Mesh data
+        verts- a list of indices to be included in the calc
+        mx- thw world matrix of the object, if empty assumes unity
+        
+    '''
+    if not mx:
+        mx = Matrix()
+    COM = Vector((0,0,0))
+    l = len(vert_inds)
+    for v in vert_inds:
+        COM = COM + bme.verts[v].co  
     COM = mx  * (COM/l)
 
     return COM
@@ -888,7 +906,93 @@ def extrude_edges_in(me, edges, mx, axis, res, debug = False):
     
     utils.extrude_edges_in(me, edges, mx, axis, res):
     '''
+
+def offset_bmesh_edge_loop(bme, bmedges, axis, res, debug = False):
+
+    '''
+    takes a CLOSED LOOP of bmesh edges and moves them in
+    eg..take a  loop and turn it into a railroad track
+    
+    needs an axis to move perpendicular too...typically 3d view direction
+    args:
+        bme - Blender BMesh Data
+        bmedges - indices of edges that form a closed loop
+        axis - the local axis which to extrude perpendicular to type Vector...probably the insertion axis
+        res - distance step for each extrusion...world size
+    '''
+    if debug:
+        start = time.time() #monitor performance
+    
+    z = axis
+    bme.edges.ensure_lookup_table()
+    bme.verts.ensure_lookup_table()
+    loops = edge_loops_from_bmedges(bme, bmedges)
+    verts_in_order = loops[0]
+       
+    verts_in_order.append(verts_in_order[1]) #the first (n=0) element of the list already repeated, adding the 2nd to the end as well.
+    l = len(verts_in_order)    
+    verts_alone = verts_in_order[0:l-2]
+    
+    
+    lerps = [Vector((0,0,0))]*(l-2)
+    vcoords = [bme.verts[index].co for index in verts_in_order]
+    curl = 0
+    
+    for n in range(0,l-2):
+
+        #Vec representation of the two edges
+        V0 = (vcoords[n+1] - vcoords[n])
+        V1 = (vcoords[n+2] - vcoords[n+1])
         
+        ##XY projection
+        T0 = V0 - V0.project(z)
+        T1 = V1 - V1.project(z)
+        
+        cross = T0.cross(T1)        
+        sign = 1
+        if cross.dot(z) < 0:
+            sign = -1
+        
+        rot = T0.rotation_difference(T1)  
+        ang = rot.angle
+        curl = curl + ang*sign
+        lerps[n] = V0.lerp(V1,.5)
+        
+    clockwise = 1
+
+    if curl < 0:
+        clockwise = -1
+    
+    if debug:
+        print(curl)
+        print('you can double check the curl/CCW by examining first 10 vertex indices')
+        print(verts_in_order[0:10])
+        
+    for n in range(0,l-2):
+   
+        index = verts_in_order[n+1]
+        v = bme.verts[index]
+        
+        V = lerps[n]
+        trans = z.cross(V)*clockwise
+        trans.normalize()
+        #delta = scale_vec_mult(trans, iscl)
+        #delta *= res 
+        delta = res * trans      
+        v.co += delta       
+    if debug:
+        print("moved %d verts in %f seconds" %(l-2,time.time()-start))
+    '''
+    ob = bpy.context.object
+    me = ob.data
+    mx = ob.matrix_world
+    axis = Vector((0,0,1))
+    edges = [e for e in me.edges if e.select]
+    res = 0.5
+    
+    utils.extrude_edges_in(me, edges, mx, axis, res):
+    '''        
+
 def material_management(context, odc_items, force = False, debug = False):
     '''
     goes through all the items in project
@@ -1122,7 +1226,162 @@ def extrude_edges_out_view(me, edges, mx, res, debug = False):
     
     extrude_edges_in(me, edges, mx, z, -1*res, debug)
    
-   
+def fill_bmesh_loop_scale(bme, bmedges, res, debug = False):
+    '''
+    fills a hole by recursively extruding, scaling toward median
+    point, and then collapsing small edges.
+    
+    Will result in triangles and quads.  Not good for complex or concave
+    holes.
+    
+    args:
+        ob - Blender Object (must be mesh)
+        edges - indices of edges which constitute the loop
+        res - appprox size of step (optional)
+    
+    return:
+        filled_verts - list of BMVerts
+    '''
+    if debug:
+        start = time.time()
+    
+    
+    def get_com_bmverts(lverts):
+        COM = Vector((0,0,0))
+        for v in lverts:
+            COM += v.co
+        COM *= 1/n_verts
+        return COM
+    
+    def avg_radii(lverts, COM):
+        Rs = [(v.co - COM).length for v in lverts]
+        R_mean = sum(Rs)/len(Rs)
+        return Rs, R_mean
+    
+    def relax_bmverts(lverts, factor = .2):
+        deltas = {}
+        
+        for v in lverts:
+            eds = [ed for ed in v.link_edges if not ed.is_manifold]
+            if not len(eds): continue
+            #longest edge
+            ed_max = max(eds, key=lambda ed: ed.calc_length())
+            
+            total_len = sum([ed.calc_length() for ed in eds])
+            mean_len = total_len/len(eds)
+            correction = total_len - mean_len
+            
+            vec = (ed_max.other_vert(v).co - v.co).normalized()
+            deltas[v] = factor * correction * vec
+            
+        for v in deltas.keys():
+            v.co += deltas[v]
+    
+    prev_loop = [bme.edges[i] for i in bmedges]      
+    orig_edges = set(bme.edges)
+    orig_vs = set(bme.verts)
+    
+    vert_inds = edge_loops_from_bmedges(bme, bmedges)[0]
+    vert_inds.pop() #closed loop
+    real_vs = [bme.verts[i] for i in vert_inds]
+    n_verts = len(vert_inds)
+    
+    #choose smallest edge as the step resolution    
+    if not res:
+        res = min(prev_loop, key=lambda ed: ed.calc_length())
+            
+
+    COM = get_com_bmverts(real_vs)
+    Rs, Rmean = avg_radii(real_vs, COM)
+    step = math.ceil(Rmean/res)
+    print('the step is %i ' % step)
+    scl = 1
+    
+    filled_verts = set()
+    finished = False
+    for i in range(1,step):  #step
+        
+        
+        if len(prev_loop) == 2:
+            finished = True
+            print('len prev loop == 2 which is quite strange')
+            #TODO, report some errors
+            break
+        
+        if len(prev_loop) < 5:
+            vert_inds = edge_loops_from_bmedges(bme, [ed.index for ed in prev_loop])[0]
+            vs = [bme.verts[i] for i in vert_inds[:-1]]
+            bme.faces.new(tuple(vs))
+            print('new face < 5 verts') 
+            finished = True
+            
+        scl = (1 - 1/step*i)/scl
+        print('the scl is %f' % scl)
+        
+        ret = bmesh.ops.extrude_edge_only(bme, edges = prev_loop)
+        geom_extrude = ret['geom']
+        prev_loop = [ele for ele in geom_extrude if isinstance(ele, bmesh.types.BMEdge)]
+        verts_extrude = [ele for ele in geom_extrude if isinstance(ele, bmesh.types.BMVert)]
+        
+        #COM = get_com_bmverts(verts_extrude)
+        Rs, Rmean = avg_radii(verts_extrude, COM)
+        
+        
+        for i,v in enumerate(verts_extrude):
+            
+            vec = COM - v.co
+            vec.normalize()
+            factor = Rs[i]/Rmean
+            v.co += factor * res * vec  #move the vert closer to the center of mass
+            
+            
+        relax_bmverts(verts_extrude, factor = .2)
+        
+        print('there are %i eds in the loop before doubles' % len(prev_loop))
+        bmesh.ops.remove_doubles(bme, verts = verts_extrude, dist = .5*res)    
+    
+        prev_loop = [ed for ed in bme.edges if not ed.is_manifold and ed not in orig_edges]
+        
+        if len(prev_loop) == 0 and len(verts_extrude) != 0:
+            print('this is the scenario where last remove doubles meses something up')
+            for v in bme.verts:
+                if (v not in orig_vs) and (v not in filled_verts):
+                    print('found the lone vert')
+                    filled_verts.add(v)
+        vs = set()
+        for ed in prev_loop:
+            vs.update([ed.verts[0], ed.verts[1]]) 
+        filled_verts |= vs
+        
+        bme.verts.ensure_lookup_table()
+        bme.edges.ensure_lookup_table()
+        bme.faces.ensure_lookup_table()
+
+    if not finished:
+        vert_inds = edge_loops_from_bmedges(bme, [ed.index for ed in prev_loop])
+        
+        if len(vert_inds) == 0:
+            print('zero vert_inds, merged into one?')
+            fv_inds = list(filled_verts)    
+            return fv_inds
+        
+        vs = [bme.verts[i] for i in vert_inds[0][:-1]]
+        f = bme.faces.new(tuple(vs))      
+        
+        if len(vs) > 4:
+            bmesh.ops.triangulate(bme, faces = [f])
+        
+    
+        bme.verts.ensure_lookup_table()
+        bme.edges.ensure_lookup_table()
+        bme.faces.ensure_lookup_table()
+        
+    if debug:
+        print("filled loop of %d verts in %f seconds" %(n_verts, start - time.time()))
+    
+    fv_inds = list(filled_verts)    
+    return fv_inds
+
 def fill_loop_scale(ob, edges, res, debug = False):
     '''
     args:
@@ -2062,8 +2321,11 @@ def obj_ray_cast(obj, matrix, ray_origin, ray_target):
     ray_target_obj = matrix_inv * ray_target
 
     # cast the ray
-    hit, normal, face_index = obj.ray_cast(ray_origin_obj, ray_target_obj)
-    
+    if bversion() < '002.077.000':
+        hit, normal, face_index = obj.ray_cast(ray_origin_obj, ray_target_obj)
+    else:
+        ok, hit, normal, face_index = obj.ray_cast(ray_origin_obj, ray_target_obj-ray_origin_obj)
+        
     if face_index != -1:
         return hit, normal, face_index
     else:

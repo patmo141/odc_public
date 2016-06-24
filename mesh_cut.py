@@ -40,7 +40,7 @@ import bmesh
 import bpy
 from bpy_extras import view3d_utils
 from bpy_extras.view3d_utils import location_3d_to_region_2d, region_2d_to_vector_3d, region_2d_to_location_3d, region_2d_to_origin_3d
-
+from common_utilities import bversion
 
 def face_neighbors(bmface):
     neighbors = []
@@ -117,6 +117,7 @@ def edge_loops_from_bmedges(bmesh, bm_edges):
     [ [1, 6, 7, 2], ...]
 
     closed loops have matching start and end values.
+    
     """
     line_polys = []
     edges = bm_edges.copy()
@@ -1367,13 +1368,21 @@ def com_mid_ray_test(new_cut, established_cut, obj, search_factor = .5):
     #search_radius = 1/2 * search_factor * obj.dimensions.length
     search_radius = 100
     imx = obj.matrix_world.inverted()     
-            
-    hit = obj.ray_cast(imx * (C + search_radius * ray), imx * (C - search_radius * ray))
-            
-    if hit[2] != -1:
-        return True
+    
+    if bversion() < '002.077.000':        
+        hit = obj.ray_cast(imx * (C + search_radius * ray), imx * (C - search_radius * ray))
+                
+        if hit[2] != -1:
+            return True
+        else:
+            return False
     else:
-        return False
+        ok, loc, no, ind  = obj.ray_cast(imx * (C + search_radius * ray), imx * (C - search_radius * ray)- imx * (C + search_radius * ray))
+                
+        if ok:
+            return True
+        else:
+            return False
         
 def com_line_cross_test(com1, com2, pt, no, factor = 2):
     '''
