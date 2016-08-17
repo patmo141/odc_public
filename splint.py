@@ -1278,7 +1278,7 @@ def register():
     bpy.utils.register_class(OPENDENTAL_OT_splint_model)
     bpy.utils.register_class(OPENDENTAL_OT_splint_report)
     bpy.utils.register_class(OPENDENTAL_OT_splint_margin)
-    bpy.utils.register_class(OPENDENTAL_OT_mesh_trim_polyline)
+    #bpy.utils.register_class(OPENDENTAL_OT_mesh_trim_polyline)
     #bpy.utils.register_module(__name__)
     
 def unregister():
@@ -1294,7 +1294,7 @@ def unregister():
     bpy.utils.unregister_class(OPENDENTAL_OT_splint_model)
     bpy.utils.unregister_class(OPENDENTAL_OT_splint_report)
     bpy.utils.unregister_class(OPENDENTAL_OT_splint_margin)
-    bpy.utils.unregister_class(OPENDENTAL_OT_mesh_trim_polyline)
+    #bpy.utils.unregister_class(OPENDENTAL_OT_mesh_trim_polyline)
     
 if __name__ == "__main__":
     register()

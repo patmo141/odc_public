@@ -204,7 +204,6 @@ def get_all_addons(display=False):
             
     return(addon_list)
 
-
 def get_com(me,verts,mx):
     '''
     args:
@@ -1235,8 +1234,8 @@ def fill_bmesh_loop_scale(bme, bmedges, res, debug = False):
     holes.
     
     args:
-        ob - Blender Object (must be mesh)
-        edges - indices of edges which constitute the loop
+        bme - BMesh
+        bmedges - indices of edges which constitute the loop
         res - appprox size of step (optional)
     
     return:
@@ -1281,6 +1280,8 @@ def fill_bmesh_loop_scale(bme, bmedges, res, debug = False):
     orig_edges = set(bme.edges)
     orig_vs = set(bme.verts)
     
+    print('There are %i original verts' % len(bme.verts))
+    
     vert_inds = edge_loops_from_bmedges(bme, bmedges)[0]
     vert_inds.pop() #closed loop
     real_vs = [bme.verts[i] for i in vert_inds]
@@ -1290,7 +1291,6 @@ def fill_bmesh_loop_scale(bme, bmedges, res, debug = False):
     if not res:
         res = min(prev_loop, key=lambda ed: ed.calc_length())
             
-
     COM = get_com_bmverts(real_vs)
     Rs, Rmean = avg_radii(real_vs, COM)
     step = math.ceil(Rmean/res)
@@ -1301,10 +1301,13 @@ def fill_bmesh_loop_scale(bme, bmedges, res, debug = False):
     finished = False
     for i in range(1,step):  #step
         
-        
         if len(prev_loop) == 2:
             finished = True
             print('len prev loop == 2 which is quite strange')
+            bme.verts.ensure_lookup_table()
+            bme.edges.ensure_lookup_table()
+            bme.faces.ensure_lookup_table()
+            
             #TODO, report some errors
             break
         
@@ -1313,6 +1316,11 @@ def fill_bmesh_loop_scale(bme, bmedges, res, debug = False):
             vs = [bme.verts[i] for i in vert_inds[:-1]]
             bme.faces.new(tuple(vs))
             print('new face < 5 verts') 
+            
+            bme.verts.ensure_lookup_table()
+            bme.edges.ensure_lookup_table()
+            bme.faces.ensure_lookup_table()
+        
             finished = True
             
         scl = (1 - 1/step*i)/scl
@@ -1379,7 +1387,8 @@ def fill_bmesh_loop_scale(bme, bmedges, res, debug = False):
     if debug:
         print("filled loop of %d verts in %f seconds" %(n_verts, start - time.time()))
     
-    fv_inds = list(filled_verts)    
+    fv_inds = list(filled_verts)
+    print('%i verts were filled in to clsoe hole' % len(fv_inds))    
     return fv_inds
 
 def fill_loop_scale(ob, edges, res, debug = False):
@@ -1574,8 +1583,7 @@ def obj_from_lib(libpath, name, link = False, rel = False):
         print(name + " linked.")
     else:
         print(name + " appended.")
-   
-       
+          
 def obj_list_from_lib(libpath, include = None, exclude = None, debug = False):
     '''
     get's a list of object names from a lend file
@@ -2194,7 +2202,6 @@ def  tracer_settle(tracer, settling_treshold = .1, epsilon = .2, max_settles=10,
 def index_update():
     bpy.ops.ed.undo_push(message = "changed active tooth")
 
-
 def center_objects(context, obs, set_origins = False, bbox = True):
     sce = context.scene
     if set_origins:
@@ -2220,9 +2227,7 @@ def center_objects(context, obs, set_origins = False, bbox = True):
     #this should handle everything well for parenting?
     for ob in obs:
         for i in range(0,3):
-            ob.matrix_world[i][3] -= Med[i]
-        
-    
+            ob.matrix_world[i][3] -= Med[i]   
         
 def determine_trace_propogate_direction(tracer, me, bias, epsilon = .2, bias_type = "ENDPOINT", debug = True, guess_on_flat = False):
     
@@ -2533,7 +2538,6 @@ def silouette_brute_force(context, ob, view, world = True, smooth = True, debug 
         ob.rotation_quaternion = ob.rotation_quaternion * 
         
     '''
-
 
 def bezier_to_mesh(crv_obj,  name, n_points = 200):
     C = bpy.context

@@ -774,9 +774,11 @@ class OPENDENTAL_OT_calculate_inside(bpy.types.Operator):
         candidates = odcutils.tooth_selection(context)
         
         for tooth in candidates:
-            if tooth.rest_type == '1': continue  #pontic            
-            crown_methods.calc_intaglio(context, sce, tooth, self.chamfer, self.gap, self.holy_zone, debug = dbg) #TODO: institude global debug for addon
-
+            if tooth.rest_type == '1': continue  #pontic
+            if self.no_undercuts:         
+                crown_methods.calc_intaglio(context, sce, tooth, self.chamfer, self.gap, self.holy_zone, debug = dbg) #TODO: institude global debug for addon
+            else:
+                crown_methods.calc_intaglio2(context, sce, tooth, self.chamfer, self.gap, self.holy_zone, debug =dbg)
         for i, layer in enumerate(layers_copy):
             context.scene.layers[i] = layer
         context.scene.layers[4] = True

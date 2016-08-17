@@ -208,7 +208,7 @@ def ray_cast_region2d(region, rv3d, screen_coord, ob, settings):
         # projection planes at inf
         r0 = get_ray_origin(ray_origin,  ray_vector, ob)
         r1 = get_ray_origin(ray_origin, -ray_vector, ob)
-        dprint(str(r0) + '->' + str(r1), l=4)
+        #dprint(str(r0) + '->' + str(r1), l=4)
         ray_origin = r0
         ray_target = r1
     

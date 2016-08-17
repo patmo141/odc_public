@@ -159,7 +159,6 @@ def pontificate(context, tooth, shell, p_type, offset):
     for i in range(0,n):
         bpy.ops.object.modifier_move_up(modifier = 'Pontic Smooth')
 
-    
 def prep_from_shell(context, shell, axis_mx, shoulder_width = .75, reduction = 1, base_res = .3, margin_loop = None, debug = False):
     '''
     shell: blender object representing tooth outer shell
@@ -302,8 +301,7 @@ def prep_from_shell(context, shell, axis_mx, shoulder_width = .75, reduction = 1
     return prep
 
 def calc_intaglio(context, sce, tooth, chamfer, gap, holy_zone, no_undercuts = True, debug = False):
-    if debug:
-        start = time.time()
+
     #Get ahold of all relevant tooth items
     margin = tooth.margin
     prep = tooth.prep_model
@@ -311,11 +309,13 @@ def calc_intaglio(context, sce, tooth, chamfer, gap, holy_zone, no_undercuts = T
     restoration = tooth.contour #TODO make sure this is  handled later
     pmargin = tooth.pmargin
     
-    
     Prep = bpy.data.objects[prep]
     prep_bvh = BVHTree.FromObject(Prep, sce)
     prep_imx = Prep.matrix_world.inverted()
     prep_mx = Prep.matrix_world
+    
+    Margin = bpy.data.objects[margin]
+    margin_mx = Margin.matrix_world
     
     Axis = bpy.data.objects[axis]
     #we wil use these to control our translations
@@ -355,7 +355,7 @@ def calc_intaglio(context, sce, tooth, chamfer, gap, holy_zone, no_undercuts = T
     
     if len(loops) > 1:
         print('you had another hole in your tooth, go see a dentist')
-        print('there can noe be any holes in the tooth mesh for this step')
+        print('there can not be any holes in the tooth mesh for this step')
         return
     
     vs = [intag_bme.verts[i] for i in loops[0][:-1]]
@@ -367,9 +367,8 @@ def calc_intaglio(context, sce, tooth, chamfer, gap, holy_zone, no_undercuts = T
         vs[i].co = loc
 
     #extrude the edge perpendicular to insertion axis the holy zone width and maintain quads
-    
     min_ed = min(non_man_eds, key = lambda ed: ed.calc_length())
-    offset = .75*min_ed.calc_length()
+    offset = min(.03, .75*min_ed.calc_length())
     
     print('offset is %f' % offset)
     print('holy zone width is %f' % holy_zone)
@@ -406,14 +405,16 @@ def calc_intaglio(context, sce, tooth, chamfer, gap, holy_zone, no_undercuts = T
     
     
     bmeds_inds = [ed.index for ed in new_bmedges]
-    filled_vs = odcutils.fill_bmesh_loop_scale(intag_bme, bmeds_inds, offset, debug = False)
-    
+    filled_vs = odcutils.fill_bmesh_loop_scale(intag_bme, bmeds_inds, 2 * offset, debug = False)
+    intag_bme.verts.index_update()
     for v in filled_vs:
         v.co += 15 * local_z
     
     hz_inds = [v.index for v in hz_verts]
     filled_inds = [v.index for v in filled_vs]
 
+    print('there are %i HZ inds' % len(hz_inds))
+    print('there are %i filled inds' % len(filled_inds))
     intag_me = bpy.data.meshes.new(tooth.name +'_intaglio')
     intag_ob = bpy.data.objects.new(tooth.name + 'intaglio', intag_me)
     intag_ob.matrix_world = mx
@@ -427,11 +428,17 @@ def calc_intaglio(context, sce, tooth, chamfer, gap, holy_zone, no_undercuts = T
     intag_ob.location = mx.to_translation()
         
     context.scene.objects.link(intag_ob)
-    intag_bme.free()
+    context.scene.objects.active = intag_ob
+    intag_ob.select = True 
     
     hz_group = intag_ob.vertex_groups.new(name = 'Holy Zone')
     hz_group.add(hz_inds, 1, 'ADD')
+    
     filled_group = intag_ob.vertex_groups.new(name = 'Filled Zone')
+    
+    #weird bug where vert group has verts alread in it!
+    
+    filled_group.remove([v.index for v in intag_ob.data.vertices])
     filled_group.add(filled_inds, 1, 'ADD')
     
     mod = intag_ob.modifiers.new('Project Undercuts', 'SHRINKWRAP')
@@ -456,11 +463,10 @@ def calc_intaglio(context, sce, tooth, chamfer, gap, holy_zone, no_undercuts = T
     
     Restoration.hide = True
     tooth.intaglio = intag_ob.name
-     
+    intag_bme.free()
+    del prep_bvh
     return  
-    
-    
-        
+           
 def calc_intaglio2(context, sce, tooth, chamfer, gap, holy_zone, debug = False):
     if debug:
         start = time.time()
@@ -700,6 +706,8 @@ def calc_intaglio2(context, sce, tooth, chamfer, gap, holy_zone, debug = False):
     
     Restoration.hide = True
     tooth.intaglio = intaglio
+
+    
     #for a in bpy.context.window.screen.areas:
     #    if a.type == 'VIEW_3D':
     #        for s in a.spaces:
@@ -1732,6 +1740,7 @@ def make_solid_restoration2(context, tooth, debug = False):
     tooth.solid = Solid_Restoration.name
     
     cej_group = Solid_Restoration.vertex_groups.new(name = 'CEJ')
+    cej_group.remove([v.idnex for v in solid_rest_me.vertices]) #Vertex Group Bug
     cej_group.add(vs_inds, 1, 'ADD')
     
     context.scene.objects.link(Solid_Restoration)    
