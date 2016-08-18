@@ -8,6 +8,7 @@ import blf
 
 #from . 
 import odcutils
+import bmesh_fns
 from odcutils import get_settings
 import bgl_utils
 import common_drawing
@@ -1140,7 +1141,35 @@ class OPENDENTAL_OT_survey_model(bpy.types.Operator):
         view = context.space_data.region_3d.view_rotation * Vector((0,0,1))
         odcutils.silouette_brute_force(context, ob, view, self.world, self.smooth, debug = dbg)
         return {'FINISHED'}
-      
+
+class OPENDENTAL_OT_blockout_model(bpy.types.Operator):
+    '''Calculates silhouette of object which surveys convexities AND concavities from the current view axis'''
+    bl_idname = 'opendental.view_blockout_undercuts'
+    bl_label = "Blockout Model From View"
+    bl_options = {'REGISTER','UNDO'}
+    
+    world = bpy.props.BoolProperty(default = True, name = "Use world coordinate for calculation...almost always should be true.")
+    smooth = bpy.props.BoolProperty(default = True, name = "Smooth the outline.  Slightly less acuurate in some situations but more accurate in others.  Default True for best results")
+
+    @classmethod
+    def poll(cls, context):
+        #restoration exists and is in scene
+        C0 = context.space_data.type == 'VIEW_3D'
+        C1 = context.object != None
+        if C1:
+            C2 = context.object.type == 'MESH'
+        else:
+            C2 = False
+        return  C0 and C1 and C2
+
+    def execute(self, context):
+        settings = get_settings()
+        dbg = settings.debug
+        ob = context.object
+        view = context.space_data.region_3d.view_rotation * Vector((0,0,1))
+        bmesh_fns.remove_undercuts(context, ob, view, self.world, self.smooth)
+        return {'FINISHED'}
+          
 class OPENDENTAL_OT_splint_bezier_model(bpy.types.Operator):
     '''Calc a Splint/Tray from a model and a curve'''
     bl_idname = "opendental.splint_from_curve"
@@ -1271,6 +1300,7 @@ def register():
     bpy.utils.register_class(OPENDENTAL_OT_splint_add_guides)
     bpy.utils.register_class(OPENDENTAL_OT_splint_subtract_holes)
     bpy.utils.register_class(OPENDENTAL_OT_survey_model)
+    bpy.utils.register_class(OPENDENTAL_OT_blockout_model)
     #bpy.utils.register_class(OPENDENTAL_OT_initiate_arch_curve)
     bpy.utils.register_class(OPENDENTAL_OT_arch_curve)
     bpy.utils.register_class(OPENDENTAL_OT_splint_subtract_sleeves)
@@ -1287,6 +1317,7 @@ def unregister():
     bpy.utils.unregister_class(OPENDENTAL_OT_splint_add_guides)
     bpy.utils.unregister_class(OPENDENTAL_OT_splint_subtract_holes)
     bpy.utils.unregister_class(OPENDENTAL_OT_survey_model)
+    bpy.utils.unregister_class(OPENDENTAL_OT_blockout_model)
     #bpy.utils.unregister_class(OPENDENTAL_OT_initiate_arch_curve)
     bpy.utils.unregister_class(OPENDENTAL_OT_arch_curve)
     bpy.utils.unregister_class(OPENDENTAL_OT_splint_subtract_sleeves)
