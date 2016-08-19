@@ -19,6 +19,7 @@ import bmesh
 from mathutils.bvhtree import BVHTree
 from mesh_cut import cross_section_seed_ver1, bound_box
 import common_drawing
+from common_utilities import bversion
 
 #import odc.odcmenus.menu_utils as menu_utils
 #import odc.odcmenus.button_data as button_data
@@ -71,7 +72,11 @@ class MarginSlicer(object):
         
         mx = self.snap_ob.matrix_world
         imx = mx.inverted()
-        pt, no, seed, dist = self.bvh.find(imx * self.cut_pt)
+        if bversion() < '002.077.000':
+            pt, no, seed, dist = self.bvh.find(imx * self.cut_pt)
+        else:
+            pt, no, seed, dist = self.bvh.find_nearest(imx * self.cut_pt)
+        
         
         verts, eds = cross_section_seed_ver1(self.bme, mx, self.cut_pt, self.cut_no, seed, max_tests = 40)
         

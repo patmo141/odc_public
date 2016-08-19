@@ -239,7 +239,11 @@ class PolyLineKnife(object):
         mx = self.cut_ob.matrix_world
         imx = mx.inverted()
         for i, v in enumerate(self.pts):
-            loc, no, ind, d = self.bvh.find(imx * v)
+            if bversion() < '002.077.000':
+                loc, no, ind, d = self.bvh.find(imx * v)
+            else:
+                loc, no, ind, d = self.bvh.find_nearest(imx * v)
+            
             self.face_map.append(ind)
             self.normals.append(no)
             locs.append(loc)

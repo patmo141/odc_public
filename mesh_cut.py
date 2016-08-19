@@ -2147,8 +2147,12 @@ def path_between_2_points(bme, bvh, mx, pt_a, pt_b,
 
     imx = mx.inverted()
     #snap and find nearest pt and face in local coords
-    loc_a, no_a, ind_a, d_a = bvh.find(imx*pt_a)
-    loc_b, no_b, ind_b, d_b = bvh.find(imx*pt_b)
+    if bversion() < '002.077.000':
+        loc_a, no_a, ind_a, d_a = bvh.find(imx*pt_a)
+        loc_b, no_b, ind_b, d_b = bvh.find(imx*pt_b)
+    else:
+        loc_a, no_a, ind_a, d_a = bvh.find_nearest(imx*pt_a)
+        loc_b, no_b, ind_b, d_b = bvh.find_nearest(imx*pt_b)
     
     if use_limit:
         #grow selection from A to B and from B to A this way we get good connectivity
@@ -3201,8 +3205,8 @@ def cross_section_seed_ver1(bme, mx,
         pt += no * shift_dist
         print('>>> shifting')
         print('>>> ' + str(ld))
-        print('>>> ' + shift_dist)
-        print('>>> ' + no*shift_dist)
+        print('>>> ' + str(shift_dist))
+        print('>>> ' + str(no*shift_dist))
     
     # find intersections of edges and cutting plane
     bmface = bme.faces[seed_index]

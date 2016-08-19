@@ -59,7 +59,7 @@ else:
 ''' 
 import bpy
 from bpy.types import Operator, AddonPreferences
-from bpy.props import StringProperty, IntProperty, BoolProperty, EnumProperty
+from bpy.props import StringProperty, IntProperty, BoolProperty, EnumProperty, FloatProperty
 from bpy.app.handlers import persistent
 #from . 
 
@@ -142,6 +142,12 @@ class ODCAddonPreferences(AddonPreferences):
             description = "SINGLE: for single units, LINEAR: do each tooth start to finish, MULTI_PARALLELS: Do all teeth at each step",
             default = '0')
     
+    #Ortho Settings
+    incisal_ed_d = FloatProperty(name="Bracket tevel",
+            default=3.5,
+            min = .5,
+            max = 7)
+       
     #behavior_mode = EnumProperty(name="How Active Tooth is determined by operator", description="'LIST' is more predictable, 'ACTIVE' more like blender, 'ACTIVE_SELECTED' is for advanced users", items=behavior_enum, default='0')
 
     def draw(self, context):
@@ -200,7 +206,7 @@ def register():
     #bpy.utils.register_module(__name__)
     #import the relevant modules
     #from . 
-    import classes, odcutils, crown, margin, bridge, splint, implant, panel, help, flexible_tooth #, crown, implant, splint, panel, odcmenus, bgl_utils
+    import classes, odcutils, crown, margin, bridge, splint, implant, panel, help, flexible_tooth, bracket_placement #, crown, implant, splint, panel, odcmenus, bgl_utils
         
     #register them
     classes.register()
@@ -213,6 +219,7 @@ def register():
     splint.register()
     help.register()
     flexible_tooth.register()
+    bracket_placement.register()
     #odcmenus.register()
     #bgl_utils.register()
     
