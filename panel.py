@@ -104,7 +104,9 @@ class VIEW3D_PT_ODCSettings(bpy.types.Panel):
         row.prop(sce.odc_props, "show_teeth", text="Teeth", icon = 'LAYER_ACTIVE')
         row.prop(sce.odc_props, "show_implant", text="Implants", icon = 'LAYER_ACTIVE')
         row.prop(sce.odc_props, "show_bridge", text="Bridges", icon = 'LAYER_ACTIVE')
+        row = col.row()
         row.prop(sce.odc_props, "show_splint", text="Splints", icon = 'LAYER_ACTIVE')
+        row.prop(sce.odc_props, "show_ortho", text="Ortho", icon = 'LAYER_ACTIVE')
         
 class VIEW3D_PT_ODCTeeth(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
@@ -363,6 +365,9 @@ class VIEW3D_PT_ODCSplints(bpy.types.Panel):
         row.operator("opendental.view_silhouette_survey", text = "Survey Model Undercuts")
         
         row = layout.row()
+        row.operator("opendental.view_blockout_undercuts", text = "Blockout Model Undercuts")
+        
+        row = layout.row()
         row.operator("opendental.model_set", text = "Set Model")
         
         row = layout.row()
@@ -386,8 +391,36 @@ class VIEW3D_PT_ODCSplints(bpy.types.Panel):
         row = layout.row()
         row.operator("opendental.splint_subtract_holes", text = "Subtract Holes")
         
+class VIEW3D_PT_ODCOrtho(bpy.types.Panel):
+    bl_space_type = "VIEW_3D"
+    bl_region_type="TOOLS"
+    bl_category = "Open Dental CAD"
+    bl_label = "Orthodontics"
+    bl_context = ""
+    
+    def draw(self, context):
+        if not context.scene.odc_props.show_ortho:
+            return
+        sce = bpy.context.scene
+        layout = self.layout
         
-              
+        
+        #split = layout.split()
+
+        #row = layout.row()
+        #row.label(text="By Patrick Moore and others...")
+        #row.operator("wm.url_open", text = "", icon="QUESTION").url = "https://sites.google.com/site/blenderdental/contributors"
+        
+        row = layout.row()
+        row.label(text = "Orthodontics")
+        row = layout.row()
+        row.operator("wm.url_open", text = "", icon="INFO").url = "https://github.com/patmo141/odc_public/wiki"
+        
+        
+        col = row.column(align=True)
+        #col.operator("opendental.add_implant_restoration", text = "Add a Space")
+        col.operator("opendental.place_ortho_bracket", text = "Place Bracket")
+        
 def register():
     bpy.utils.register_class(SCENE_UL_odc_teeth)
     bpy.utils.register_class(SCENE_UL_odc_implants)
@@ -398,6 +431,7 @@ def register():
     bpy.utils.register_class(VIEW3D_PT_ODCImplants)
     bpy.utils.register_class(VIEW3D_PT_ODCBridges)
     bpy.utils.register_class(VIEW3D_PT_ODCSplints)
+    bpy.utils.register_class(VIEW3D_PT_ODCOrtho)
     #bpy.utils.register_module(__name__)
     
 def unregister():
@@ -411,6 +445,7 @@ def unregister():
     bpy.utils.unregister_class(VIEW3D_PT_ODCSettings)
     bpy.utils.unregister_class(VIEW3D_PT_ODCBridges)
     bpy.utils.unregister_class(VIEW3D_PT_ODCSplints)
+    bpy.utils.unregister_class(VIEW3D_PT_ODCOrtho)
     
 if __name__ == "__main__":
     register()

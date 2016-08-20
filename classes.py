@@ -101,6 +101,9 @@ class ODCProps(bpy.types.PropertyGroup):
                 name="Splint Panel",
                 default=False)
         
+        cls.show_ortho = bpy.props.BoolProperty(
+                name="Ortho Panel",
+                default=False)
         #implant panel
         #bridge panel
         #splint panel       
