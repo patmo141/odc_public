@@ -14,26 +14,30 @@ import common_drawing
 import bgl_utils
 from mesh_cut import cross_section_seed_ver1, bound_box
 from textbox import TextBox
-from odcutils import get_settings
+from odcutils import get_settings, obj_list_from_lib, obj_from_lib
 
 class BracketDataManager(object):
     '''
     a helper class for interactive editing of Blender object
     on surface of another object
     '''
-    def __init__(self,context,snap_type ='SCENE', snap_object = None, name = 'Bracket'):
+    def __init__(self,context,snap_type ='SCENE', snap_object = None, name = 'Bracket', bracket = None):
         '''
-        will create a new bezier object, with all auto
-        handles. Links it to scene
+        will create a new cube object if a bracket is not provided
+        TODO, bracket meta data for offset axes (tip, torque offset etc)
         '''
-        self.bracket_data = bpy.data.meshes.new(name)
-        bme = bmesh.new()
-        bmesh.ops.create_cube(bme, size = 2, matrix = Matrix.Identity(4))
-        bme.to_mesh(self.bracket_data)
-        self.bracket_obj = bpy.data.objects.new(name,self.bracket_data)
-        context.scene.objects.link(self.bracket_obj)
-        self.bracket_obj.draw_type = 'WIRE'  #important to prevent scene ray_cast
         
+        if bracket == None:
+            self.bracket_data = bpy.data.meshes.new(name)
+            bme = bmesh.new()
+            bmesh.ops.create_cube(bme, size = 2, matrix = Matrix.Identity(4))
+            bme.to_mesh(self.bracket_data)
+            self.bracket_obj = bpy.data.objects.new(name,self.bracket_data)
+            context.scene.objects.link(self.bracket_obj)
+            self.bracket_obj.draw_type = 'WIRE'  #important to prevent scene ray_cast
+        else:
+            self.bracket_obj = bracket
+            
         self.snap_type = snap_type  #'SCENE' 'OBJECT'
         self.snap_ob = snap_object
                 
@@ -555,13 +559,72 @@ class OPENDENTAL_OT_place_bracket(bpy.types.Operator):
         context.window_manager.modal_handler_add(self)
         return {'RUNNING_MODAL'}
     
+class OPENDENTAL_OT_place_bracket_static(bpy.types.Operator):
+    '''Places bracket or swaps existing bracket with new bracket of your choice'''
+    bl_idname = "opendental.place_static_bracket"
+    bl_label = "Place Bracket Static"
+    bl_options = {'REGISTER','UNDO'}
+    bl_property = "ob"
+
+    def item_cb(self, context):
+        return [(obj.name, obj.name, '') for obj in self.objs]
+ 
+    objs = bpy.props.CollectionProperty(type=bpy.types.PropertyGroup)
+    
+    ob = bpy.props.EnumProperty(name="Bracket Library Objects", 
+                                 description="A List of the ortho library", 
+                                 items=item_cb)
+    
+    def invoke(self, context, event): 
+        self.objs.clear()
+        settings = get_settings()
+        libpath = settings.ortho_lib
+        assets = obj_list_from_lib(libpath)
        
+        for asset_object_name in assets:
+            self.objs.add().name = asset_object_name
+           
+        context.window_manager.invoke_search_popup(self)
+        return {'FINISHED'}
+    
+    def execute(self, context):
+        settings = get_settings()
+        dbg = settings.debug
+        #if bpy.context.mode != 'OBJECT':
+        #    bpy.ops.object.mode_set(mode = 'OBJECT')
+        
+        sce = context.scene
+          
+        world_mx = Matrix.Identity(4)
+            
+        world_mx[0][3]=sce.cursor_location[0]
+        world_mx[1][3]=sce.cursor_location[1]
+        world_mx[2][3]=sce.cursor_location[2]
+                                        
+        #is this more memory friendly than listing all objects?
+        current_obs = [ob.name for ob in bpy.data.objects]
+                
+        #link the new implant from the library
+        obj_from_lib(settings.ortho_lib,self.ob)
+                
+        #this is slightly more robust than trusting we don't have duplicate names.
+        for ob in bpy.data.objects:
+            if ob.name not in current_obs:
+                Bracket = ob
+                        
+        sce.objects.link(Bracket)
+        rv3d = context.region_data
+        view_mx = rv3d.view_rotation.to_matrix()
+    
+        Bracket.matrix_world = world_mx * view_mx.to_4x4()              
+        return {'FINISHED'}
+     
 def register():
     bpy.utils.register_class(OPENDENTAL_OT_place_bracket)
-    
+    bpy.utils.register_class(OPENDENTAL_OT_place_bracket_static)
 def unregister():
     bpy.utils.unregister_class(OPENDENTAL_OT_place_bracket)
-
+    bpy.utils.unregister_class(OPENDENTAL_OT_place_bracket_static)
 
 if __name__ == "__main__":
     register()

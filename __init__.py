@@ -84,6 +84,7 @@ class ODCAddonPreferences(AddonPreferences):
     def_mat_lib = os.path.join(data_folder,"odc_materials.blend")
     def_imp_lib = os.path.join(data_folder,"odc_implants_leone.blend")
     def_drill_lib = os.path.join(data_folder,"odc_drill_lib.blend")
+    def_ortho_lib = os.path.join(data_folder,"odc_bracket_library.blend")
     
     #enums
     behavior_modes=['LIST','ACTIVE','ACTIVE_SELECTED']
@@ -118,6 +119,12 @@ class ODCAddonPreferences(AddonPreferences):
     drill_lib = bpy.props.StringProperty(
         name="Drill Library",
         default=def_drill_lib,
+        #default = '',
+        subtype='FILE_PATH')
+    
+    ortho_lib = bpy.props.StringProperty(
+        name="Orthodontic Library",
+        default=def_ortho_lib,
         #default = '',
         subtype='FILE_PATH')
     
@@ -157,6 +164,7 @@ class ODCAddonPreferences(AddonPreferences):
         layout.prop(self, "tooth_lib")
         layout.prop(self, "imp_lib")
         layout.prop(self, "drill_lib")
+        layout.prop(self, "ortho_lib")
         layout.prop(self, "behavior")
         layout.prop(self, "workflow")
         layout.prop(self, "debug")

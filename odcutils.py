@@ -42,6 +42,7 @@ def get_settings():
         get_settings.cached_settings = addons[foldername].preferences
    
     return get_settings.cached_settings
+
 get_settings.cached_settings = None
 
 #global universal_intntl
@@ -2347,7 +2348,6 @@ def reorient_object(ob, orientation):
     sce = bpy.context.scene
     #cosntraint?
     
-    
     mx = ob.matrix_world.copy()
     loc = ob.location.copy()
     loc2 = mx.to_translation()
@@ -2377,10 +2377,7 @@ def reorient_object(ob, orientation):
         new_mx = orientation.to_matrix()
         #new_mx.resize()
         
-    
-    
     new_imx = new_mx.inverted()
-    
     
     if ob.type == 'MESH':
         print('Meshes supported')

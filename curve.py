@@ -661,7 +661,6 @@ class CurveDataManager(object):
         elif self.snap_type == 'OBJECT':
             mx = self.snap_ob.matrix_world
             imx = mx.inverted()
-            loc, no, face_ind = self.snap_ob.ray_cast(imx * ray_origin, imx * ray_target)
             
             if bversion() < '002.077.000':
                 loc, no, face_ind = self.snap_ob.ray_cast(imx * ray_origin, imx * ray_target)

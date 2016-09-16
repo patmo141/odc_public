@@ -1,4 +1,5 @@
 import bpy
+from odcutils import get_settings
 
 class SCENE_UL_odc_teeth(bpy.types.UIList):
     # The draw_item function is called for each item of the collection that is visible in the list.
@@ -404,22 +405,21 @@ class VIEW3D_PT_ODCOrtho(bpy.types.Panel):
         sce = bpy.context.scene
         layout = self.layout
         
-        
-        #split = layout.split()
-
-        #row = layout.row()
-        #row.label(text="By Patrick Moore and others...")
-        #row.operator("wm.url_open", text = "", icon="QUESTION").url = "https://sites.google.com/site/blenderdental/contributors"
+        addon_prefs = get_settings()
         
         row = layout.row()
         row.label(text = "Orthodontics")
         row = layout.row()
         row.operator("wm.url_open", text = "", icon="INFO").url = "https://github.com/patmo141/odc_public/wiki"
         
+        row = layout.row()
+        row.prop(addon_prefs, "ortho_lib")
         
+        row = layout.row()
         col = row.column(align=True)
         #col.operator("opendental.add_implant_restoration", text = "Add a Space")
         col.operator("opendental.place_ortho_bracket", text = "Place Bracket")
+        col.operator("opendental.place_static_bracket", text = "Place Bracket Static")
         
 def register():
     bpy.utils.register_class(SCENE_UL_odc_teeth)
