@@ -409,7 +409,6 @@ class VIEW3D_PT_ODCOrtho(bpy.types.Panel):
         
         row = layout.row()
         row.label(text = "Orthodontics")
-        row = layout.row()
         row.operator("wm.url_open", text = "", icon="INFO").url = "https://github.com/patmo141/odc_public/wiki"
         
         row = layout.row()
@@ -420,7 +419,37 @@ class VIEW3D_PT_ODCOrtho(bpy.types.Panel):
         #col.operator("opendental.add_implant_restoration", text = "Add a Space")
         col.operator("opendental.place_ortho_bracket", text = "Place Bracket")
         col.operator("opendental.place_static_bracket", text = "Place Bracket Static")
+
+class VIEW3D_PT_ODCDentures(bpy.types.Panel):
+    bl_space_type = "VIEW_3D"
+    bl_region_type="TOOLS"
+    bl_category = "Open Dental CAD"
+    bl_label = "Dentures"
+    bl_context = ""
+    
+    def draw(self, context):
+        sce = bpy.context.scene
+        layout = self.layout
         
+        addon_prefs = get_settings()
+        
+        row = layout.row()
+        row.label(text = "Dentures")
+        row.operator("wm.url_open", text = "", icon="INFO").url = "https://github.com/patmo141/odc_public/wiki"
+        
+        row = layout.row()
+        col = row.column(align=True)
+        #col.operator("opendental.add_implant_restoration", text = "Add a Space")
+        col.operator("opendental.meta_scaffold_create", text = "Make Baseplate Scaffold")
+        col.operator("opendental.meta_offset_surface", text = "Make Meta Baseplate")
+        col.operator("opendental.meta_rim_from_curve", text = "Make Meta Wax Rim")
+        
+        if context.object and context.object.type == 'META':
+            col.operator("object.convert", text = "Convert Meta Baseplate to Mesh")
+        
+        col.operator("opendental.denture_boolean_intaglio", text = "Boolean with Master Cast")
+        
+             
 def register():
     bpy.utils.register_class(SCENE_UL_odc_teeth)
     bpy.utils.register_class(SCENE_UL_odc_implants)
@@ -432,6 +461,7 @@ def register():
     bpy.utils.register_class(VIEW3D_PT_ODCBridges)
     bpy.utils.register_class(VIEW3D_PT_ODCSplints)
     bpy.utils.register_class(VIEW3D_PT_ODCOrtho)
+    bpy.utils.register_class(VIEW3D_PT_ODCDentures)
     #bpy.utils.register_module(__name__)
     
 def unregister():
@@ -446,6 +476,7 @@ def unregister():
     bpy.utils.unregister_class(VIEW3D_PT_ODCBridges)
     bpy.utils.unregister_class(VIEW3D_PT_ODCSplints)
     bpy.utils.unregister_class(VIEW3D_PT_ODCOrtho)
+    bpy.utils.unregister_class(VIEW3D_PT_ODCDentures)
     
 if __name__ == "__main__":
     register()

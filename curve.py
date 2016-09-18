@@ -642,11 +642,12 @@ class CurveDataManager(object):
         hit = False
         if self.snap_type == 'SCENE':
             
+            mx = Matrix.Identity(4) #scene ray cast returns world coords
             if bversion() < '002.077.000':
                 res, obj, omx, loc, no = context.scene.ray_cast(ray_origin, ray_target)
             else:
-                res, loc, no, ind, obj, mx = context.scene.ray_cast(ray_origin, view_vector)
-            mx = Matrix.Identity(4)
+                res, loc, no, ind, obj, omx = context.scene.ray_cast(ray_origin, view_vector)
+            
             if res:
                 hit = True
         
@@ -716,8 +717,8 @@ class CurveDataManager(object):
             if bversion() < '002.077.000':
                 res, obj, omx, loc, no = context.scene.ray_cast(ray_origin, ray_target)  #changed in 2.77
             else:
-                res, loc, no, ind, obj, mx = context.scene.ray_cast(ray_origin, view_vector)
-            
+                res, loc, no, ind, obj, omx = context.scene.ray_cast(ray_origin, view_vector)
+                
             hit = res
             if not hit:
                 #cast the ray into a plane a
