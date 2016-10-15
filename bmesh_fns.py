@@ -255,7 +255,7 @@ def remove_undercuts(context, ob, view, world = True, smooth = True, epsilon = .
     print('Undercut material is %i' % mat_ind)
     
     for f in new_faces:
-        obj.data.polygons[f.idnex].material_index = mat_ind
+        obj.data.polygons[f.index].material_index = mat_ind
             
     if world:
         obj.matrix_world = mx

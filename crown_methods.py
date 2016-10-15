@@ -1740,7 +1740,7 @@ def make_solid_restoration2(context, tooth, debug = False):
     tooth.solid = Solid_Restoration.name
     
     cej_group = Solid_Restoration.vertex_groups.new(name = 'CEJ')
-    cej_group.remove([v.idnex for v in solid_rest_me.vertices]) #Vertex Group Bug
+    cej_group.remove([v.index for v in solid_rest_me.vertices]) #Vertex Group Bug
     cej_group.add(vs_inds, 1, 'ADD')
     
     context.scene.objects.link(Solid_Restoration)    
