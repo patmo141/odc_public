@@ -17,7 +17,26 @@ Created by Patrick Moore for Blender
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-http://blender.stackexchange.com/questions/19744/getting-the-active-region?rq=1
+
+sources
+http://blender.stackexchange.com/questions/32523/how-get-drawing-area-in-callback-for-quadview
+
+ if not context.space_data.region_quadviews:
+        rv3d = bpy.context.space_data.region_3d
+    else:
+        # verify area 
+        if context.area.type != 'VIEW_3D' or context.space_data.type != 'VIEW_3D':
+            return
+        i = -1
+        for region in context.area.regions:
+            if region.type == 'WINDOW':
+                i += 1
+                if context.region.id == region.id:
+                    break
+        else:
+            return
+
+        rv3d = context.space_data.region_quadviews[i]
 
 '''
 
@@ -169,6 +188,7 @@ class VIEW3D_OT_explore_multi_view3d(bpy.types.Operator):
                     self.mouse_raw = (event.mouse_x, event.mouse_y)
                     
             return 'wait'
+        
         
         elif event.type == 'ESC':
             return 'cancel'

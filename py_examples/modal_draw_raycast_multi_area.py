@@ -17,8 +17,6 @@ Created by Patrick Moore for Blender
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-http://blender.stackexchange.com/questions/19744/getting-the-active-region?rq=1
-
 '''
 
 
@@ -35,9 +33,8 @@ import blf
 import bgl
 from bpy.types import Operator
 from bpy.props import FloatVectorProperty, StringProperty, IntProperty, BoolProperty, FloatProperty, EnumProperty
-from bpy.types import Operator, AddonPreferences
-from bpy_extras.object_utils import AddObjectHelper, object_data_add
-from bpy_extras import view3d_utils
+from bpy.types import Operator
+from bpy_extras.view3d_utils import location_3d_to_region_2d, region_2d_to_location_3d, region_2d_to_origin_3d, region_2d_to_vector_3d
 from mathutils import Vector, Matrix, Quaternion
 from mathutils.bvhtree import BVHTree
 
@@ -56,6 +53,28 @@ def tag_redraw_all_view3d(context):
                         region.tag_redraw()
 
 
+
+def draw_3d_points_specific_region(region, rv3d, points, color, size):
+    '''
+    draw a bunch of dots
+    args:
+        points: a list of 3d vectors
+        color: tuple (r,g,b,a)
+        size: integer? maybe a float
+    '''
+    points_2d = [location_3d_to_region_2d(region, rv3d, loc) for loc in points]
+    if None in points_2d:
+        points_2d = filter(None, points_2d)
+    bgl.glColor4f(*color)
+    bgl.glPointSize(size)
+    bgl.glBegin(bgl.GL_POINTS)
+    for coord in points_2d:
+        #TODO:  Debug this problem....perhaps loc_3d is returning points off of the screen.
+        if coord:
+            bgl.glVertex2f(*coord)  
+
+    bgl.glEnd()   
+    return
 #### Custom Classes####
                  
 ### Draw Code To Lable Regions ###    
@@ -76,7 +95,7 @@ def draw_callback_px(self, context):
         
             if (self.mouse_raw[0] > area.x and self.mouse_raw[0] < area.x + area.width) and \
                 (self.mouse_raw[1] > area.y and self.mouse_raw[1] < area.y + area.height):
-                #put an M on the mouse
+                #label the mouse
                 dims = blf.dimensions(0,'MOUSE %i' %n)
                 x = self.mouse_region_coord[0] - .5 * dims[0]
                 y = self.mouse_region_coord[1] + dims[1]
@@ -84,10 +103,15 @@ def draw_callback_px(self, context):
                 blf.draw(font_id,'MOUSE %i' % n)
         
     
+            if len(self.area_data[n]):
+                N = len(self.areas)
+                color = (n/N, .5*n/N, (1-n/N), 1)
+                draw_3d_points_specific_region(context.region, context.space_data.region_3d, self.area_data[n], color, 3)
+            
 def draw_callback_3d(self,context):
     pass
     
-class VIEW3D_OT_explore_multi_view3d(bpy.types.Operator):
+class VIEW3D_OT_explore_multi_view3d(Operator):
     """Interact and Draw in Multiple Regions"""
     bl_idname = "view3d.explore_multi_views"
     bl_label = "Explore Multi View"
@@ -170,6 +194,42 @@ class VIEW3D_OT_explore_multi_view3d(bpy.types.Operator):
                     
             return 'wait'
         
+        
+        if event.type == 'LEFTMOUSE' and event.value == 'PRESS':
+            
+            #get the appropriate region and region_3d for ray_casting
+            for n, area in enumerate(self.areas):
+                if (event.mouse_x > area.x and event.mouse_x < area.x + area.width) and \
+                    (event.mouse_y > area.y and event.mouse_y < area.y + area.height):
+                
+                    for reg in area.regions:
+                        if reg.type == 'WINDOW':
+                            region = reg
+                    for spc in area.spaces:
+                        if spc.type == 'VIEW_3D':
+                            rv3d = spc.region_3d
+                
+                    #just transform the mouse window coords into the region coords        
+                    coord_region = (event.mouse_x - region.x, event.mouse_y - region.y)
+                    
+        
+                    self.mouse_region_coord = coord_region
+                    self.mouse_raw = (event.mouse_x, event.mouse_y)
+                    
+                    #this is the important part, using the correct region and rv3d
+                    #to get the ray.
+                    view_vector = region_2d_to_vector_3d(region, rv3d, coord_region)
+                    ray_origin = region_2d_to_origin_3d(region, rv3d, coord_region)
+                    ray_target = ray_origin + (view_vector * 10000)
+                
+                    res, loc, no, ind, obj, mx = context.scene.ray_cast(ray_origin, view_vector)
+
+                    if res:
+                        print('Clicked on ' + obj.name + ' in the %i region' % n)
+                        self.area_data[n] += [loc]
+                             
+            return 'wait'
+        
         elif event.type == 'ESC':
             return 'cancel'
         
@@ -183,6 +243,7 @@ class VIEW3D_OT_explore_multi_view3d(bpy.types.Operator):
         self.mode = 'wait'
         
         self.areas = []
+        self.area_data = []
         self.messages = []
         self.regions = []
         
@@ -190,6 +251,7 @@ class VIEW3D_OT_explore_multi_view3d(bpy.types.Operator):
             for area in window.screen.areas:
                 if area.type == 'VIEW_3D':
                     self.areas += [area]
+                    self.area_data += [[]] #empy list to be filled with 3d points
                     for region in area.regions:
                         if region.type == 'WINDOW': #ignore the tool-bar, header etc
                             self.regions += [region]
