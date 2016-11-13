@@ -1,29 +1,36 @@
 '''
 Created on Oct 16, 2016
+@author: Patrick Moore...and ____________ <--This could be you!
 
-@author: Patrick
+Modal Operator to generate a Blender Camera that matches 
+an image of a known object
 
+The user will select corresponding sets of points in the 3DView
+and in the image editor.  The matching set of points will be used 
+to calculate a perspective matrix P.  Then the matrix P, along with 
+any know information about the actual camera, will be used to 
+create a Blender camera and the image set as the background image.
 
-This demo will allow navigation in the 3dview and in the image editor
-It will also allow ray casting into the 3dview
-It will allow clicked points in the Image editor
-skeleton for 2d image registration using picked points to a 3d model.
-
-#draw in different space types
-http://blender.stackexchange.com/questions/57709/how-to-draw-shapes-in-the-node-editor-with-python-bgl
-
-#post pixel and post_view drawing in the 3d View
-http://blender.stackexchange.com/questions/61699/how-to-draw-geometry-in-3d-view-window-with-bgl
-
-http://blender.stackexchange.com/users/3710/poor
-
-Image pixel coordinates
-http://blender.stackexchange.com/questions/53780/pixel-coordinates-of-image-with-python?rq=1
-
-do some intense math
+#Solving for P
+http://www1.cs.columbia.edu/~atroccol/3DPhoto/3D-2D_registration.html
+http://dsp.stackexchange.com/questions/1727/3d-position-estimation-using-2d-camera
 http://blender.stackexchange.com/questions/46208/points-only-camera-calibration/65152#65152
-
 http://stackoverflow.com/questions/24913232/using-numpy-np-linalg-svd-for-singular-value-decomposition
+
+#Building Camera from P
+http://blender.stackexchange.com/questions/40650/blender-camera-from-3x4-matrix?rq=1
+
+#Reference material
+http://blender.stackexchange.com/questions/38009/3x4-camera-matrix-from-blender-camera
+http://blender.stackexchange.com/questions/15102/what-is-blenders-camera-projection-matrix-model?rq=1
+http://blender.stackexchange.com/questions/16472/how-can-i-get-the-cameras-projection-matrix
+
+#OTHER References
+https://developer.blender.org/diffusion/B/browse/master/release/scripts/modules/bpy_extras/object_utils.py$285
+http://blender.stackexchange.com/questions/882/how-to-find-image-coordinates-of-the-rendered-vertex/884#884
+
+#For picking the points in 3D View and Image Editor
+See modal_draw_multi_area.py and modal_draw_imgeditor_view3d.py
 '''
 import bpy
 import bgl
@@ -233,7 +240,6 @@ class VIEW3D_OT_image_view3d_modal(bpy.types.Operator):
         if event.type == 'LEFTMOUSE' and event.value == 'PRESS':
             
             #get the appropriate region and region_3d for ray_casting
-            
             if (event.mouse_x > self.view3d_area.x and event.mouse_x < self.view3d_area.x + self.view3d_area.width) and \
                 (event.mouse_y > self.view3d_area.y and event.mouse_y < self.view3d_area.y + self.view3d_area.height):
             
@@ -246,8 +252,6 @@ class VIEW3D_OT_image_view3d_modal(bpy.types.Operator):
             
                 #just transform the mouse window coords into the region coords        
                 coord_region = (event.mouse_x - self.view3d_region.x, event.mouse_y - self.view3d_region.y)
-                
-    
                 self.mouse_region_coord = coord_region
                 self.mouse_raw = (event.mouse_x, event.mouse_y)
                 
@@ -256,9 +260,8 @@ class VIEW3D_OT_image_view3d_modal(bpy.types.Operator):
                 view_vector = region_2d_to_vector_3d(region, rv3d, coord_region)
                 ray_origin = region_2d_to_origin_3d(region, rv3d, coord_region)
                 ray_target = ray_origin + (view_vector * 10000)
-            
-                res, loc, no, ind, obj, mx = context.scene.ray_cast(ray_origin, view_vector)
 
+                res, loc, no, ind, obj, mx = context.scene.ray_cast(ray_origin, view_vector)
                 if res:
                     print('Clicked on ' + obj.name)
                     
@@ -308,41 +311,87 @@ class VIEW3D_OT_image_view3d_modal(bpy.types.Operator):
     
     def build_matrix(self):
         
-        if len(self.pixel_coords) < 3:
+        #make sure we have enough points
+        if len(self.pixel_coords) < 6:
             print('not enough image points')
             return
-        elif len(self.points_3d) < 3:
+        elif len(self.points_3d) < 6:
             print('not enough 3d points')
             return
         
         L = min(len(self.points_3d),len(self.pixel_coords))
         
-        #center the points?
-        #scale so that mean distance to center is sqrt(3) and sqrt(2)
+        #make corresponding lists, assumes the user selected in same order
+        pts_3d = self.points_3d[0:L]
+        pts_2d = self.pixel_coords[0:L]
         
+        #calculate origin center.  TODO, use numpy instead of dumb for loops
+        orig_3d = Vector((0,0,0))
+        orig_2d = Vector((0,0))
+        
+        for v in pts_3d:
+            orig_3d += 1/L * v
+            
+        for px in pts_2d:
+            orig_2d += 1/L * px
+            
+        #orig_3d *= 1/L
+        #orig_2d *= 1/L
+
+        #move the data to the center
+        pts_3d = [v - orig_3d for v in pts_3d]
+        pts_2d = [v - orig_2d for v in pts_2d]
+        
+        #scale so that mean distance to center is sqrt(3) and sqrt(2)
+        RMS_2d = (sum([v.length**2 for v in pts_2d]))**.5
+        RMS_3d = (sum([v.length**2 for v in pts_3d]))**.5
+        
+        pts_3d = [3**.5/RMS_3d * v for v in pts_3d]
+        pts_2d = [2**.5/RMS_2d * v for v in pts_2d]
+        
+        #Now, check that the centroid and the RMS values are correclty scaled for sanity
+        #Check the centroid
+        orig_3d_check = Vector((0,0,0))
+        orig_2d_check = Vector((0,0))
+        
+        for v in pts_3d:
+            orig_3d_check += v
+            
+        for px in pts_2d:
+            orig_2d_check += px
+            
+        orig_3d_check *= 1/L
+        orig_2d_check *= 1/L
+        print('CHECK THE CENTROID TRANSLATION WAS CORRECT')
+        print(orig_3d_check, orig_2d_check)
+        
+        #Check the RMS
+        RMS_2d_check = (sum([v.length**2 for v in pts_2d]))**.5
+        RMS_3d_check = (sum([v.length**2 for v in pts_3d]))**.5
+        
+        print('CHECK THE RMS SCALING WAS CORRECT')
+        print((RMS_2d_check, 2**.5))
+        print((RMS_3d_check, 3**.5))
         
         mx_rows = []
-        
         for i in range(0,L):
-            X,Y,Z,W = self.points_3d[i].to_4d()
-            x,y,w = self.pixel_coords[i].to_3d()
+            X,Y,Z,W = pts_3d[i].to_4d()
+            x,y,w = pts_2d[i].to_3d()
             
-            r0 = np.array([0,0,0,0,-X*x, -Y*w, -Z*w, -W*w, X*y, Y*y, Z*y,W*y])
+            r0 = np.array([0,0,0,0,-X*w, -Y*w, -Z*w, -W*w, X*y, Y*y, Z*y,W*y])
             r1 = np.array([X*w, Y*w, Z*w, W*w, 0, 0, 0, 0, -X*x, -Y*x, -Z*x, -W*x])
             
             mx_rows.append(r0)
             mx_rows.append(r1)
             
         A = np.vstack(mx_rows)
-        print(A)
+        print('MATRIX A IS THE FOLLWOING SHAPE, it should %i x % i' % (2*L, 12))
         print(A.shape)
         
-        u, s, vh = np.linalg.svd(A)  #might need to be A.P to solve for P
+        u, s, vh = np.linalg.svd(A, full_matrices = False)  #might need to be A.P to solve for P
         
-        print(s)
-        print(max(s))
-        print(u.shape)
-        print(vh.shape)
+        print(u.shape, vh.shape, s.shape)
+        
         '''
         New in version 1.8.0.
 
@@ -353,6 +402,23 @@ class VIEW3D_OT_image_view3d_modal(bpy.types.Operator):
         If a is a matrix object (as opposed to an ndarray), then so are all the return values
         '''
         
+        #rows of v are the eigen vectors....! (I reckon)
+        
+        best_s = min(s)
+        print('the minimum value of s is %f' % best_s)
+        n = np.nonzero(s==best_s)[0][0]
+        print(s)
+        print(best_s)
+        print(n)
+        
+        P_vector = vh[:][n]
+        P_vector2 = vh[n][:]
+        U_vector = u[:][n]
+        U_vector2 = u[n][:]
+        print(P_vector)
+        print(P_vector2)
+        print(U_vector)
+        print(U_vector2)
         
         
     def invoke(self, context, event):

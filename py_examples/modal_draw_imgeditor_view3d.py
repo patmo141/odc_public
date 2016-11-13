@@ -5,6 +5,10 @@ Created on Oct 16, 2016
 
 http://blender.stackexchange.com/questions/57709/how-to-draw-shapes-in-the-node-editor-with-python-bgl
 http://blender.stackexchange.com/users/3710/poor
+
+Image pixel coordinates
+http://blender.stackexchange.com/questions/53780/pixel-coordinates-of-image-with-python?rq=1
+
 '''
 import bpy
 import bgl
