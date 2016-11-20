@@ -650,9 +650,11 @@ class VIEW3D_OT_image_view3d_modal(bpy.types.Operator):
             print('not enough 3d points')
             return
         
-        L = min(len(self.points_3d),len(self.pixel_coords))
+        
         
         #make corresponding lists, assumes the user selected in same order
+        #at a minimum, ensure lists are same size
+        L = min(len(self.points_3d),len(self.pixel_coords))
         pts_3d = self.points_3d[0:L]
         pts_2d = self.pixel_coords[0:L]
         
@@ -717,8 +719,8 @@ class VIEW3D_OT_image_view3d_modal(bpy.types.Operator):
         #will try mx_rows.reverse() next
         A = np.vstack(mx_rows)
         
-        print(mx_rows[0])
-        print(A[:][0])
+        #print(mx_rows[0])
+        #print(A[:][0])
         
         u, s, vh = np.linalg.svd(A, full_matrices = False)
         
@@ -742,21 +744,37 @@ class VIEW3D_OT_image_view3d_modal(bpy.types.Operator):
         print('EIGENVALUES')
         print(s)
         
-        print('SOLUTION FOR P, Pt, U, Ut')
-        P_vector = vh[n,:]
-
-        print(P_vector)
+        print('SOLUTION FOR P from vh')
+        P_vector_v = vh[n,:]
+        print(P_vector_v)
         
+        print('SOLUTION FOR P from U')
+        P_vector_u = u[:,n]
+        print(P_vector_u)
         
+        #P_u_list = [P_vector_u[0:3],
+        #            P_vector_u[3:6], 
+        #            P_vector_u[6:9],
+        #           P_vector_u[9:12]]
+        P_u_list = [P_vector_u[0:4],
+                    P_vector_u[4:8], 
+                    P_vector_u[8:12]]
+        P_u = Matrix(P_u_list)
+        
+        print('Calculated from SVD Eigenvector')
+        print(P_u)
         cam = bpy.data.objects.get('Test Camera')
         if cam:    
             P, K, RT = get_3x4_P_matrix_from_blender(cam)
-            print('Calculated from Text Camera')
+            print('Calculated from Test Camera')
             print(P)
+            
+    
+        #get_blender_camera_from_3x4_P(P_u, 1) 
         
-        #not quite ready to generate a camera.  Although maybe I should?
         
-          
+        
+        
     def invoke(self, context, event):
        
         #collect all the 3d_view regions
