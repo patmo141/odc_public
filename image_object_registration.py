@@ -669,15 +669,15 @@ class VIEW3D_OT_image_view3d_modal(bpy.types.Operator):
             orig_2d += 1/L * px
             
         #move the data to the center
-        pts_3d = [v - orig_3d for v in pts_3d]
-        pts_2d = [v - orig_2d for v in pts_2d]
+        #pts_3d = [v - orig_3d for v in pts_3d]
+        #pts_2d = [v - orig_2d for v in pts_2d]
         
         #scale so that mean distance to center is sqrt(3) and sqrt(2)
         RMS_2d = (sum([v.length**2 for v in pts_2d]))**.5
         RMS_3d = (sum([v.length**2 for v in pts_3d]))**.5
         
-        pts_3d = [3**.5/RMS_3d * v for v in pts_3d]
-        pts_2d = [2**.5/RMS_2d * v for v in pts_2d]
+        #pts_3d = [3**.5/RMS_3d * v for v in pts_3d]
+        #pts_2d = [2**.5/RMS_2d * v for v in pts_2d]
         
         print('The RMS Factors')
         print((3**.5/RMS_3d, 2**.5/RMS_2d))
@@ -748,6 +748,12 @@ class VIEW3D_OT_image_view3d_modal(bpy.types.Operator):
         P_vector_v = vh[n,:]
         print(P_vector_v)
         
+        P_v_list = [P_vector_v[0:4],
+                    P_vector_v[4:8], 
+                    P_vector_v[8:12]]
+        P_v = Matrix(P_v_list)
+        
+        
         print('SOLUTION FOR P from U')
         P_vector_u = u[:,n]
         print(P_vector_u)
@@ -770,8 +776,8 @@ class VIEW3D_OT_image_view3d_modal(bpy.types.Operator):
             print(P)
             
     
-        #get_blender_camera_from_3x4_P(P_u, 1) 
-        
+        get_blender_camera_from_3x4_P(P_u, 1) 
+        #get_blender_camera_from_3x4_P(P_v, 1) 
         
         
         
