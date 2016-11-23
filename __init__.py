@@ -214,7 +214,7 @@ def register():
     #bpy.utils.register_module(__name__)
     #import the relevant modules
     #from . 
-    import classes, odcutils, crown, margin, bridge, splint, implant, panel, help, flexible_tooth, bracket_placement, denture_base #, crown, implant, splint, panel, odcmenus, bgl_utils
+    import classes, odcutils, crown, margin, bridge, splint, implant, panel, help, flexible_tooth, bracket_placement, denture_base, occlusion #, crown, implant, splint, panel, odcmenus, bgl_utils
         
     #register them
     classes.register()
@@ -229,6 +229,7 @@ def register():
     bracket_placement.register()
     denture_base.register()
     panel.register()
+    occlusion.register()
     #odcmenus.register()
     #bgl_utils.register()
     
