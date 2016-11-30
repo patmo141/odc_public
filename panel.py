@@ -415,10 +415,16 @@ class VIEW3D_PT_ODCOrtho(bpy.types.Panel):
         row.prop(addon_prefs, "ortho_lib")
         
         row = layout.row()
+        row.prop(addon_prefs, "bracket")
+        row = layout.row()
+        row.prop(addon_prefs, "bracket_incisal_reference")
+        row.prop(addon_prefs, "incisal_ed_d")
+        
+        row = layout.row()
         col = row.column(align=True)
-        #col.operator("opendental.add_implant_restoration", text = "Add a Space")
-        col.operator("opendental.place_ortho_bracket", text = "Place Bracket")
-        col.operator("opendental.place_static_bracket", text = "Place Bracket Static")
+        
+        col.operator("opendental.place_ortho_bracket", text = "Place Bracket Live")
+        col.operator("opendental.place_static_bracket", text = "Place Bracket at Cursor")
 
 class VIEW3D_PT_ODCDentures(bpy.types.Panel):
     bl_space_type = "VIEW_3D"

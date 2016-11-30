@@ -2,6 +2,10 @@
 Created on Aug 18, 2016
 
 @author: Patrick
+some useful tidbits
+http://blender.stackexchange.com/questions/28940/how-can-i-update-a-menu-via-an-operator
+https://developer.blender.org/diffusion/B/browse/master/release/scripts/templates_py/ui_previews_dynamic_enum.py
+
 '''
 import bpy
 import bmesh
@@ -133,6 +137,10 @@ class BracketDataManager(object):
         self.grab_undo_mx = self.bracket_obj.matrix_world.copy()
         return
     
+    def spin_confirm(self):
+        self.grab_undo_mx = Matrix.Identity(4)
+        return
+    
     def spin_event(self, event, shift):
         
         loc = Matrix.Translation(self.bracket_obj.matrix_world.to_translation())
@@ -167,14 +175,14 @@ class BracketDataManager(object):
             ang = .5 * math.pi/180
         else:
             ang = 2.5*math.pi/180
-        if event in {'WHEELUPMOUSE', 'UP_ARROW'}:
+        if event in {'WHEELUPMOUSE', 'RIGHT_ARROW'}:
             rot = Matrix.Rotation(ang, 3, Y)
             
             print(rot)
             print(rot_base)
             print(rot * rot_base)
             self.bracket_obj.matrix_world = loc * (rot * rot_base).to_4x4()
-        elif event in {'WHEELDOWNMOUSE', 'DOWN_ARROW'}:
+        elif event in {'WHEELDOWNMOUSE', 'LEFT_ARROW'}:
             rot = Matrix.Rotation(-ang, 3, Y)
             self.bracket_obj.matrix_world = loc * (rot * rot_base).to_4x4()
         
@@ -193,10 +201,6 @@ class BracketDataManager(object):
             ang = 2.5*math.pi/180
         if event in {'WHEELUPMOUSE', 'UP_ARROW'}:
             rot = Matrix.Rotation(ang, 3, X)
-            
-            print(rot)
-            print(rot_base)
-            print(rot * rot_base)
             self.bracket_obj.matrix_world = loc * (rot * rot_base).to_4x4()
         elif event in {'WHEELDOWNMOUSE', 'DOWN_ARROW'}:
             rot = Matrix.Rotation(-ang, 3, X)
@@ -204,9 +208,7 @@ class BracketDataManager(object):
         
         else:
             return           
-    def spin_confirm(self):
-        self.grab_undo_mx = Matrix.Identity(4)
-        return
+    
     def draw(self,context):
         pass
 
@@ -389,6 +391,7 @@ class OPENDENTAL_OT_place_bracket(bpy.types.Operator):
     bl_label = "Ortho Bracket Place"
     bl_options = {'REGISTER', 'UNDO'}
     
+
     @classmethod
     def poll(cls, context):
         if context.mode == "OBJECT" and context.object != None:
@@ -423,6 +426,9 @@ class OPENDENTAL_OT_place_bracket(bpy.types.Operator):
             self.bracket_slicer.prepare_slice()
             return 'rotate'
         
+        if event.type == 'S' and event.value == 'PRESS' and self.bracket_slicer:
+            self.bracket_slicer.prepare_slice()
+            return 'tip'
         
         if event.type == 'MOUSEMOVE':  
             return 'main'
@@ -449,7 +455,7 @@ class OPENDENTAL_OT_place_bracket(bpy.types.Operator):
     def modal_torque(self,context,event):
         # no navigation in grab mode
         
-        if event.type == 'LEFTMOUSE' and event.value == 'PRESS':
+        if event.type in {'LEFTMOUSE','RET','ENTER'} and event.value == 'PRESS':
             #confirm location
             self.bracket_slicer.slice_confirm()
             return 'main'
@@ -459,10 +465,10 @@ class OPENDENTAL_OT_place_bracket(bpy.types.Operator):
             self.bracket_slicer.slice_cancel()
             return 'main'
         
-        elif event.type == 'MOUSEMOVE':
+        #elif event.type == 'MOUSEMOVE':
             #update the b_pt location
-            self.bracket_slicer.slice_mouse_move(context,event.mouse_region_x, event.mouse_region_y)
-            return 'torque'
+        #    self.bracket_slicer.slice_mouse_move(context,event.mouse_region_x, event.mouse_region_y)
+        #    return 'torque'
         
         elif event.type in {'WHEELUPMOUSE', 'WHEELDOWNMOUSE', 'UP_ARROW','DOWN_ARROW'}:
             self.bracket_manager.torque_event(event.type, event.shift)
@@ -472,7 +478,7 @@ class OPENDENTAL_OT_place_bracket(bpy.types.Operator):
     def modal_rotate(self,context,event):
         # no navigation in grab mode
         
-        if event.type == 'LEFTMOUSE' and event.value == 'PRESS':
+        if event.type in {'LEFTMOUSE','RET','ENTER'} and event.value == 'PRESS':
             #confirm location
             self.bracket_slicer.slice_confirm()
             return 'main'
@@ -482,15 +488,74 @@ class OPENDENTAL_OT_place_bracket(bpy.types.Operator):
             self.bracket_slicer.slice_cancel()
             return 'main'
         
-        elif event.type == 'MOUSEMOVE':
+        #commented out, no longer want to move the mouse
+        #elif event.type == 'MOUSEMOVE':
             #update the b_pt location
-            self.bracket_slicer.slice_mouse_move(context,event.mouse_region_x, event.mouse_region_y)
-            return 'rotate'
+        #    self.bracket_slicer.slice_mouse_move(context,event.mouse_region_x, event.mouse_region_y)
+        #    return 'rotate'
         
-        elif event.type in {'WHEELUPMOUSE', 'WHEELDOWNMOUSE', 'UP_ARROW','DOWN_ARROW'}:
+        elif event.type in {'WHEELUPMOUSE', 'WHEELDOWNMOUSE', 'LEFT_ARROW','RIGHT_ARROW'}:
             self.bracket_manager.rotate_event(event.type, event.shift)
             self.bracket_slicer.slice()
-            return 'rotate'    
+            return 'rotate'
+        
+        else:
+            return 'rotate'
+    
+    def modal_tip(self,context,event):
+    # no navigation in grab mode
+        
+        if event.type in {'LEFTMOUSE','RET','ENTER'} and event.value == 'PRESS':
+            #confirm location
+            self.bracket_slicer.slice_confirm()
+            return 'main'
+        
+        elif event.type in {'RIGHTMOUSE', 'ESC'} and event.value == 'PRESS':
+            #put it back!
+            self.bracket_slicer.slice_cancel()
+            return 'main'
+        
+        #commented out, no longer want to move the mouse
+        #elif event.type == 'MOUSEMOVE':
+            #update the b_pt location
+        #    self.bracket_slicer.slice_mouse_move(context,event.mouse_region_x, event.mouse_region_y)
+        #    return 'rotate'
+        
+        elif event.type in {'WHEELUPMOUSE', 'WHEELDOWNMOUSE', 'LEFT_ARROW','RIGHT_ARROW'}:
+            self.bracket_manager.spin_event(event.type, event.shift)
+            self.bracket_slicer.slice()
+            return 'tip'
+        
+        else:
+            return 'tip'
+    def modal_start(self,context,event):
+        
+        if event.type == 'LEFTMOUSE' and event.value == 'PRESS':
+            #confirm location
+            self.bracket_slicer.slice_confirm()
+            return 'main'
+        
+        elif event.type == 'MOUSEMOVE':
+            x, y = event.mouse_region_x, event.mouse_region_y
+            self.bracket_manager.place_bracket(context, x,y)
+            print('start palce bracket why no work?')
+            #self.bracket_slicer.slice_mouse_move(context,event.mouse_region_x, event.mouse_region_y)
+            return 'start'
+        
+        elif event.type in {'WHEELUPMOUSE', 'WHEELDOWNMOUSE', 'UP_ARROW','DOWN_ARROW'}:
+            self.bracket_manager.spin_event(event.type, event.shift)
+            #self.bracket_slicer.slice()
+            return 'start'
+        
+        elif event.type == "RIGTMOUSE" and event.value == 'PRESS':
+            del_obj = self.bracket_manager.bracket_obj
+            context.scene.objects.unlink(del_obj)
+            bpy.data.objects.remove(del_obj)
+            return 'cancel'
+        
+        else:
+            return 'start'
+           
     def modal_grab(self,context,event):
         # no navigation in grab mode
         #uses the slicer to manage the grab
@@ -518,11 +583,13 @@ class OPENDENTAL_OT_place_bracket(bpy.types.Operator):
     def modal(self, context, event):
         context.area.tag_redraw()
         
-        FSM = {}    
+        FSM = {}
+        FSM['start']   = self.modal_start
         FSM['main']    = self.modal_main
         FSM['rotate']    = self.modal_rotate
         FSM['grab']   = self.modal_grab
         FSM['torque']  = self.modal_torque
+        FSM['tip']  = self.modal_tip
         FSM['nav']     = self.modal_nav
         
         nmode = FSM[self.mode](context, event)
@@ -541,20 +608,38 @@ class OPENDENTAL_OT_place_bracket(bpy.types.Operator):
     
     def invoke(self, context, event):
 
-        sce=bpy.context.scene
-
+        settings = get_settings()
+        libpath = settings.ortho_lib
+        assets = obj_list_from_lib(libpath)
+        
+        if settings.bracket in assets:
+            current_obs = [ob.name for ob in bpy.data.objects]
+            obj_from_lib(settings.ortho_lib,settings.bracket)
+            for ob in bpy.data.objects:
+                if ob.name not in current_obs:
+                    Bracket = ob
+                        
+            context.scene.objects.link(Bracket)
+        else:
+            Bracket = None
+            
         if context.object and context.object.type == 'MESH':
-            self.bracket_manager = BracketDataManager(context,snap_type ='OBJECT', snap_object = context.object, name = 'Bracket')
+            self.bracket_manager = BracketDataManager(context,snap_type ='OBJECT', 
+                                                      snap_object = context.object, 
+                                                      name = 'Bracket', bracket = Bracket)
             self.bracket_slicer = BracektSlicer(context, self.bracket_manager)
         else:
-            self.bracket_manager = BracketDataManager(context,snap_type ='SCENE', snap_object = None, name = 'Bracket')
+            self.bracket_manager = BracketDataManager(context,snap_type ='SCENE', 
+                                                      snap_object = None, 
+                                                      name = 'Bracket', 
+                                                      bracket = Bracket)
             self.bracket_slicer = None
         
         
         help_txt = "DRAW MARGIN OUTLINE\n\nLeft Click on model to place bracket.\n G to grab  \n S to show slice \n ENTER to confirm \n ESC to cancel"
         self.help_box = TextBox(context,500,500,300,200,10,20,help_txt)
         self.help_box.snap_to_corner(context, corner = [1,1])
-        self.mode = 'main'
+        self.mode = 'start'
         self._handle = bpy.types.SpaceView3D.draw_handler_add(bracket_placement_draw_callback, (self, context), 'WINDOW', 'POST_PIXEL')
         context.window_manager.modal_handler_add(self)
         return {'RUNNING_MODAL'}

@@ -65,7 +65,12 @@ from bpy.app.handlers import persistent
 
 import odcutils
 
-   
+def update_brackets(self,context):
+    settings = odcutils.get_settings()
+    libpath = settings.ortho_lib
+    assets = odcutils.obj_list_from_lib(libpath)
+    return [(asset,asset, asset) for asset in assets]
+
 #addon preferences
 class ODCAddonPreferences(AddonPreferences):
     bl_idname = __name__
@@ -96,7 +101,9 @@ class ODCAddonPreferences(AddonPreferences):
     workflow_enum = []
     for index, item in enumerate(workflow_modes):
         workflow_enum.append((str(index), workflow_modes[index], str(index)))
-        
+    
+    
+              
     #real properties
     tooth_lib = bpy.props.StringProperty(
         name="Tooth Library",
@@ -127,7 +134,7 @@ class ODCAddonPreferences(AddonPreferences):
         default=def_ortho_lib,
         #default = '',
         subtype='FILE_PATH')
-    
+ 
     debug = IntProperty(
             name="Debug Level",
             default=1,
@@ -150,11 +157,19 @@ class ODCAddonPreferences(AddonPreferences):
             default = '0')
     
     #Ortho Settings
-    incisal_ed_d = FloatProperty(name="Bracket tevel",
+    incisal_ed_d = FloatProperty(name="Bracket Level",
             default=3.5,
             min = .5,
             max = 7)
-       
+    
+    bracket = EnumProperty(
+            items = update_brackets,
+            name = "Choose Bracket")
+    
+    bracket_incisal_reference = bpy.props.BoolProperty(
+        name="Incisal Reference",
+        description = 'Show an edge bar offset to assist bracket placement',
+        default=True)   
     #behavior_mode = EnumProperty(name="How Active Tooth is determined by operator", description="'LIST' is more predictable, 'ACTIVE' more like blender, 'ACTIVE_SELECTED' is for advanced users", items=behavior_enum, default='0')
 
     def draw(self, context):
