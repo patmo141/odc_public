@@ -5,12 +5,12 @@ Created on Aug 18, 2016
 some useful tidbits
 http://blender.stackexchange.com/questions/28940/how-can-i-update-a-menu-via-an-operator
 https://developer.blender.org/diffusion/B/browse/master/release/scripts/templates_py/ui_previews_dynamic_enum.py
-
+http://inside.mines.edu/fs_home/gmurray/ArbitraryAxisRotation/
 '''
 import bpy
 import bmesh
 import math
-from mathutils import Vector, Matrix, Color
+from mathutils import Vector, Matrix, Color, Quaternion
 from mathutils.bvhtree import BVHTree
 from bpy_extras import view3d_utils
 from common_utilities import bversion
@@ -48,9 +48,9 @@ class BracketDataManager(object):
         self.grab_undo_mx = Matrix.Identity(4)
         self.mouse = (None, None)  
     
-    def place_bracket(self,context,x,y):
+    def place_bracket(self,context,x,y, normal = False):
         self.grab_initiate()
-        self.grab_mouse_move(context, x, y, normal = True)
+        self.grab_mouse_move(context, x, y, normal = normal)
         self.grab_confirm()
         
     def grab_initiate(self):
@@ -97,16 +97,23 @@ class BracketDataManager(object):
             imx = mx.inverted()
             
             #this will be the object Z axis
-            world_normal = mx.transposed().to_3x3() * no
+            world_normal = imx.transposed().to_3x3() * no
 
             if normal:
                 ob_Z = world_normal
-            
-                view_X = rv3d.view_rotation * Vector((1,0,0))
-                ob_Y = ob_Z.cross(view_X)
+                ob_Z.normalize()
+                
+                view_Y = rv3d.view_rotation * Vector((0,1,0))
+                if self.bracket_obj.name.startswith("U") or self.bracket_obj.name.startswith("u"):
+                    view_Y *= -1
+                
+                #project view y into the tangetnt plane of teh surface
+                ob_Y = view_Y - view_Y.dot(ob_Z)*ob_Z
+                ob_Y.normalize()
+                
                 ob_X = ob_Y.cross(ob_Z)
-                ob_X.normalize(), ob_Y.normalize(), ob_Z.normalize()
-            
+                ob_X.normalize()
+                
                 #rotation matrix from principal axes
                 T = Matrix.Identity(3)  #make the columns of matrix U, V, W
                 T[0][0], T[0][1], T[0][2]  = ob_X[0] ,ob_Y[0],  ob_Z[0]
@@ -253,6 +260,25 @@ class BracektSlicer(object):
         self.cut_no_x = mx.to_3x3()*Vector((1,0,0))
         self.cut_no_y = mx.to_3x3()*Vector((0,1,0))
         
+        z = mx.to_3x3()*Vector((0,0,1))
+        
+        tip =  self.bracket_data.bracket_obj.get('tip')
+        quad = self.bracket_data.bracket_obj.get('quadrant')    
+        
+        if tip and quad:
+            if quad in {'UL','LR',2,4}:
+                print('clockwise tip crown toward midline for UL, LR, 2, 4')
+                tip *= -1
+            else:
+                print('counter clockwise tip crown toward midline for UR, LL, 1, 3')
+                
+            tip_rad = math.pi * tip / 180
+            
+            
+            tip_quat = Quaternion(z, tip_rad)
+            self.cut_no_x = tip_quat * self.cut_no_x
+        
+        
     def slice(self):
         self.clear_draw()
         
@@ -273,8 +299,8 @@ class BracektSlicer(object):
     
         bmx = self.bracket_data.bracket_obj.matrix_world
         bracket_x = bmx.to_3x3()*Vector((1,0,0))
-        bracket_y = bmx.to_3x3()*Vector((0,1,0))
         bracket_z = bmx.to_3x3()*Vector((0,0,1))
+        bracket_y = bracket_z.cross(self.cut_no_x)
         
         v0 = self.cut_pt
         v1 = v0 + self.incisal_d * bracket_y
@@ -537,7 +563,7 @@ class OPENDENTAL_OT_place_bracket(bpy.types.Operator):
         
         elif event.type == 'MOUSEMOVE':
             x, y = event.mouse_region_x, event.mouse_region_y
-            self.bracket_manager.place_bracket(context, x,y)
+            self.bracket_manager.place_bracket(context, x,y, normal = True)
             print('start palce bracket why no work?')
             #self.bracket_slicer.slice_mouse_move(context,event.mouse_region_x, event.mouse_region_y)
             return 'start'
@@ -618,6 +644,7 @@ class OPENDENTAL_OT_place_bracket(bpy.types.Operator):
             for ob in bpy.data.objects:
                 if ob.name not in current_obs:
                     Bracket = ob
+                    Bracket.hide = False
                         
             context.scene.objects.link(Bracket)
         else:
