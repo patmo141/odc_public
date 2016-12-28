@@ -252,7 +252,13 @@ class BracektSlicer(object):
         self.active_point_2d = Vector((0,0,0))
         self.mx = self.bracket_data.bracket_obj.matrix_world.to_3x3()
         
-        self.incisal_d = get_settings().incisal_ed_d
+        b_gauge = self.bracket_data.bracket_obj.get('bracket_gauge') 
+        if b_gauge and not get_settings().bgauge_override:
+            #read the prescription value from the objects
+            self.b_gauge = b_gauge
+        else:
+            #override the
+            self.b_gauge = get_settings().bracket_gauge
         
     def get_pt_and_no(self):
         mx = self.bracket_data.bracket_obj.matrix_world
@@ -303,7 +309,7 @@ class BracektSlicer(object):
         bracket_y = bracket_z.cross(self.cut_no_x)
         
         v0 = self.cut_pt
-        v1 = v0 + self.incisal_d * bracket_y
+        v1 = v0 + self.b_gauge * bracket_y
         v_l = v1 - 4 * bracket_z
         v_m = v1 + 2 * bracket_x
         v_d = v1 - 2 * bracket_x
@@ -564,13 +570,12 @@ class OPENDENTAL_OT_place_bracket(bpy.types.Operator):
         elif event.type == 'MOUSEMOVE':
             x, y = event.mouse_region_x, event.mouse_region_y
             self.bracket_manager.place_bracket(context, x,y, normal = True)
-            print('start palce bracket why no work?')
-            #self.bracket_slicer.slice_mouse_move(context,event.mouse_region_x, event.mouse_region_y)
+            self.bracket_slicer.slice_mouse_move(context,event.mouse_region_x, event.mouse_region_y)
             return 'start'
         
         elif event.type in {'WHEELUPMOUSE', 'WHEELDOWNMOUSE', 'UP_ARROW','DOWN_ARROW'}:
             self.bracket_manager.spin_event(event.type, event.shift)
-            #self.bracket_slicer.slice()
+            self.bracket_slicer.slice()
             return 'start'
         
         elif event.type == "RIGTMOUSE" and event.value == 'PRESS':

@@ -1,4 +1,5 @@
 import bpy
+import os
 from odcutils import get_settings
 
 class SCENE_UL_odc_teeth(bpy.types.UIList):
@@ -412,13 +413,18 @@ class VIEW3D_PT_ODCOrtho(bpy.types.Panel):
         row.operator("wm.url_open", text = "", icon="INFO").url = "https://github.com/patmo141/odc_public/wiki"
         
         row = layout.row()
-        row.prop(addon_prefs, "ortho_lib")
+        row.prop(addon_prefs, "ortho_lib", text = "")
+        
+        lib_name = addon_prefs.ortho_lib
+        
+        row = layout.row()
+        row.label(text = 'Active Lib: ' + os.path.basename(lib_name))
         
         row = layout.row()
         row.prop(addon_prefs, "bracket")
         row = layout.row()
-        row.prop(addon_prefs, "bracket_incisal_reference")
-        row.prop(addon_prefs, "incisal_ed_d")
+        row.prop(addon_prefs, "bgauge_override", text = "Override Gauge")
+        row.prop(addon_prefs, "bracket_gauge", text = "")
         
         row = layout.row()
         col = row.column(align=True)
