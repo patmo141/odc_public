@@ -103,7 +103,7 @@ class OPENDENTAL_OT_meta_offset_surface(bpy.types.Operator):
     
     radius = FloatProperty(default = 2.5, description = 'Radius metaballs to be added')
     finalize = BoolProperty(default = False, description = 'Will convert meta to mesh and remove meta object')
-    
+    resolution = FloatProperty(default = .8, description = 'Mesh resolution. 0.8 for dentures, .3 for cast reduction')
     n_verts = IntProperty(default = 1000)
     @classmethod
     def poll(cls, context):
@@ -119,8 +119,8 @@ class OPENDENTAL_OT_meta_offset_surface(bpy.types.Operator):
         
         meta_data = bpy.data.metaballs.new('Meta Mesh')
         meta_obj = bpy.data.objects.new('Meta Surface', meta_data)
-        meta_data.resolution = .8
-        meta_data.render_resolution = .8
+        meta_data.resolution = self.resolution
+        meta_data.render_resolution = self.resolution
         context.scene.objects.link(meta_obj)
         
         # Copy Material if any
@@ -172,10 +172,11 @@ class OPENDENTAL_OT_meta_offset_surface(bpy.types.Operator):
             row = layout.row()
             row.label(text = "WARNING, THIS SEEMS LIKE A LOT")
             row = layout.row()
-            row.label(text = "Consider CANCEL and decimating more")
+            row.label(text = "Consider CANCEL/decimating more or possible long processing time")
         
         row = layout.row()
         row.prop(self, "radius")
+        row.prop(self,"resolution")
         row.prop(self, "finalize")
         
 
@@ -294,7 +295,106 @@ class OPENDENTAL_OT_meta_rim_from_curve(bpy.types.Operator):
 
         return context.window_manager.invoke_props_dialog(self)
     
+class OPENDENTAL_OT_meta_custom_tray(bpy.types.Operator):
+    """Create Meta Offset Solid from mesh"""
+    bl_idname = "opendental.meta_custom_tray"
+    bl_label = "Create Meta Custom Tray"
+    bl_options = {'REGISTER', 'UNDO'}
     
+    
+    tray_thickness = FloatProperty(default = 2, description = 'Thickness of tray')
+    tray_offset = FloatProperty(default = 2.5, description = 'Spacer for impression material')
+    finalize = BoolProperty(default = False, description = 'Will convert meta to mesh and remove meta object')
+    
+    n_verts = IntProperty(default = 5000)
+    @classmethod
+    def poll(cls, context):
+        if context.mode == "OBJECT" and context.object != None:
+            return True
+        else:
+            return False
+        
+    def execute(self, context):
+        
+        ob = context.object
+        mx = ob.matrix_world
+        
+        meta_data = bpy.data.metaballs.new('Meta Mesh')
+        meta_obj = bpy.data.objects.new('Meta Surface', meta_data)
+        meta_data.resolution = .8
+        meta_data.render_resolution = .8
+        context.scene.objects.link(meta_obj)
+        
+        
+        # Copy Material if any
+        if ob.data.materials:
+            mat = ob.data.materials[0]
+            meta_obj.data.materials.append(mat)
+            
+            
+        for v in self.bme.verts:
+            
+            #outer shell
+            mb = meta_data.elements.new(type = 'BALL')
+            mb.radius = self.tray_thickness + self.tray_offset
+            mb.co = v.co
+            
+            
+            #inner spacer
+            #mb2 = meta_data2.elements.new(type = 'BALL')
+            #mb2.radius = self.tray_offset
+            #mb2.co = v.co
+            
+            #bridge them?
+            
+            
+        meta_obj.matrix_world = mx
+        
+        if self.finalize:
+            context.scene.update()
+            me = meta_obj.to_mesh(context.scene, apply_modifiers = True, settings = 'PREVIEW')
+            new_ob = bpy.data.objects.new('MetaSurfaceMesh', me)
+            context.scene.objects.link(new_ob)
+            new_ob.matrix_world = mx
+            if meta_obj.data.materials:
+                new_ob.data.materials.append(mat)
+                
+            context.scene.objects.unlink(meta_obj)
+            bpy.data.objects.remove(meta_obj)
+            bpy.data.metaballs.remove(meta_data)
+        
+        self.bme.free()    
+        return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        self.bme = bmesh.new()
+        self.bme.from_object(context.object, context.scene)
+        self.bme.verts.ensure_lookup_table()
+        
+        self.n_verts = len(self.bme.verts)
+        
+        return context.window_manager.invoke_props_dialog(self)
+    
+    def draw(self,context):
+        
+        layout = self.layout
+        
+        row = layout.row()
+        row.label(text = "%i metaballs will be added" % self.n_verts)
+        
+        if self.n_verts > 10000:
+            row = layout.row()
+            row.label(text = "WARNING, THIS SEEMS LIKE A LOT")
+            row = layout.row()
+            row.label(text = "Consider CANCEL and decimating more")
+        
+        row = layout.row()
+        row.prop(self, "tray_thickness")
+        row = layout.row()
+        row.prop(self, "tray_offset")
+        row = layout.row()
+        row.prop(self, "finalize")
+           
 class OPENDENTAL_OT_boolean_intaglio(bpy.types.Operator):
     """Add boolean modifier to remove intaglio surfaec"""
     bl_idname = "opendental.denture_boolean_intaglio"
@@ -341,11 +441,13 @@ class OPENDENTAL_OT_boolean_intaglio(bpy.types.Operator):
     
 def register():
     bpy.utils.register_class(OPENDENTAL_OT_meta_offset_surface)
+    bpy.utils.register_class(OPENDENTAL_OT_meta_custom_tray)
     bpy.utils.register_class(OPENDENTAL_OT_prepare_meta_scaffold)
     bpy.utils.register_class(OPENDENTAL_OT_meta_rim_from_curve)
     bpy.utils.register_class(OPENDENTAL_OT_boolean_intaglio)
 def unregister():
     bpy.utils.unregister_class(OPENDENTAL_OT_meta_offset_surface)
+    bpy.utils.unregister_class(OPENDENTAL_OT_meta_custom_tray)
     bpy.utils.unregister_class(OPENDENTAL_OT_prepare_meta_scaffold)
     bpy.utils.unregister_class(OPENDENTAL_OT_meta_rim_from_curve)
     bpy.utils.unregister_class(OPENDENTAL_OT_boolean_intaglio)

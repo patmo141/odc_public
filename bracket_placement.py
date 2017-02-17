@@ -115,7 +115,7 @@ class BracketDataManager(object):
                 ob_X.normalize()
                 
                 #rotation matrix from principal axes
-                T = Matrix.Identity(3)  #make the columns of matrix U, V, W
+                T = Matrix.Identity(3)  #make the columns of matrix X, Y, Z
                 T[0][0], T[0][1], T[0][2]  = ob_X[0] ,ob_Y[0],  ob_Z[0]
                 T[1][0], T[1][1], T[1][2]  = ob_X[1], ob_Y[1],  ob_Z[1]
                 T[2][0] ,T[2][1], T[2][2]  = ob_X[2], ob_Y[2],  ob_Z[2]
@@ -257,7 +257,7 @@ class BracektSlicer(object):
             #read the prescription value from the objects
             self.b_gauge = b_gauge
         else:
-            #override the
+            #override the rx value
             self.b_gauge = get_settings().bracket_gauge
         
     def get_pt_and_no(self):
@@ -270,7 +270,7 @@ class BracektSlicer(object):
         
         tip =  self.bracket_data.bracket_obj.get('tip')
         quad = self.bracket_data.bracket_obj.get('quadrant')    
-        
+        #if properties of bracket exist, it willa adjust
         if tip and quad:
             if quad in {'UL','LR',2,4}:
                 print('clockwise tip crown toward midline for UL, LR, 2, 4')
@@ -300,9 +300,16 @@ class BracektSlicer(object):
         verts_x, eds = cross_section_seed_ver1(self.bme, mx, self.cut_pt, self.cut_no_x, seed, max_tests = 100)
         verts_y, eds = cross_section_seed_ver1(self.bme, mx, self.cut_pt, self.cut_no_y, seed, max_tests = 100)
         #put them in world space
-        self.slice_points_x = [mx*v for v in verts_x]
-        self.slice_points_y = [mx*v for v in verts_y]
-    
+        
+        if verts_x != None:
+            self.slice_points_x = [mx*v for v in verts_x]
+        else:
+            self.slice_points_x = []
+        if verts_y != None:
+            self.slice_points_y = [mx*v for v in verts_y]
+        else:
+            self.slice_points_y = []
+            
         bmx = self.bracket_data.bracket_obj.matrix_world
         bracket_x = bmx.to_3x3()*Vector((1,0,0))
         bracket_z = bmx.to_3x3()*Vector((0,0,1))

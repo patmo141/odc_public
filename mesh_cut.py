@@ -2612,6 +2612,10 @@ def find_sorted_bmedges_crossing_plane(pt, no, edges, epsilon, e_ind_from, co_fr
         for j, ed in enumerate(i_edges):
             signed_ds += [(intersects[j] - min_i).dot(direction)]
             
+        print(signed_ds)
+        print(list(set(signed_ds)))
+        
+        
         #[x for (y,x) in sorted(zip(Y,X))]  X sorted by Y
         sorted_edges = [ed for (d,ed) in sorted(zip(signed_ds,i_edges))]
         sorted_is = [i for (d,i) in sorted(zip(signed_ds, intersects))]

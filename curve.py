@@ -17,6 +17,7 @@ import random
 import time
 from common_utilities import bversion
 
+
 class PolyLineKnife(object):
     '''
     A class which manages user placed points on an object to create a

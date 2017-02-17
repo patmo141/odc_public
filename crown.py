@@ -928,7 +928,13 @@ class OPENDENTAL_OT_plan_restorations(bpy.types.Operator):
             if True not in self.tooth_button_hover:
                 bpy.types.SpaceView3D.draw_handler_remove(self._handle, 'WINDOW')
                 return {'CANCELLED'}
-
+            
+        elif event.type == 'RET' and event.value == 'PRESS':
+            bpy.types.SpaceView3D.draw_handler_remove(self._handle, 'WINDOW')
+            self.ret_selected = [button_data.tooth_button_names[i] for i in range(0,len(button_data.tooth_button_data)) if self.tooth_button_select[i]]
+            self.execute(context)
+            return {'FINISHED'}
+            
         return {'RUNNING_MODAL'}
 
     def invoke(self, context, event):
@@ -1601,6 +1607,8 @@ class OPENDENTAL_OT_teeth_arch(bpy.types.Operator):
                                     reverse = self.reverse,
                                     mirror = self.mirror, 
                                     debug = dbg)
+ 
+        
         
         bpy.ops.object.select_all(action='DESELECT')
         context.scene.objects.active = ob
@@ -1613,7 +1621,68 @@ class OPENDENTAL_OT_teeth_arch(bpy.types.Operator):
         context.scene.layers[1] = True
         return {'FINISHED'}
 
+class OPENDENTAL_OT_occlusal_scheme_to_curve(bpy.types.Operator):
+    '''
+    applies an entire tooth library to a bezier curve
+    '''
+    bl_idname = 'opendental.occlusal_scheme'
+    bl_label = "Arch Plan Occlusion"
+    bl_options = {'REGISTER','UNDO'}
     
+    
+    mirror = bpy.props.BoolProperty(
+        name = "Mirror", 
+        description = "If checked, will mirror the arch and place teeth on contralateral side",
+        default = False)
+            
+    reverse = bpy.props.BoolProperty(
+        name = "Reverse", 
+        description = "Check this if the teeth come in ordered the wrong way...not if they are flipped over",
+        default = False)
+            
+    link = bpy.props.BoolProperty(
+        name = "Link", 
+        description = "If checked, sets the teeth as the restoration for working teeth",
+        default = False)
+        
+    
+    @classmethod
+    def poll(cls, context):
+        #restoration exists and is in scene
+        return context.object.type == 'CURVE'
+    
+    def invoke(self,context,event):
+        
+        context.window_manager.invoke_props_dialog(self, width=300) 
+        return {'RUNNING_MODAL'}       
+    def execute(self, context):
+        settings = get_settings()
+        layers_copy = [layer for layer in context.scene.layers]
+        context.scene.layers[0] = True
+        
+        ob = context.object
+        settings = get_settings()
+
+        full_arch_methods.occlusal_scheme_to_curve(context,
+                                                   ob, 
+                                                   settings.tooth_lib, 
+                                                   teeth = [], 
+                                                   link = False, 
+                                                   flip = False, 
+                                                   reorient = True)
+        
+        bpy.ops.object.select_all(action='DESELECT')
+        context.scene.objects.active = ob
+        ob.select = True
+        #go into weight paint mode?
+        
+        odcutils.layer_management(context.scene.odc_teeth, debug = True)
+        for i, layer in enumerate(layers_copy):
+            context.scene.layers[i] = layer
+        context.scene.layers[1] = True
+        return {'FINISHED'}
+    
+       
 def post_register2():
     #until we get access to addon prefs at register...:-( what we gonna do!?
     #bpy.utils.register_class(CBGetCrownForm)
@@ -1639,6 +1708,7 @@ def register():
     bpy.utils.register_class(OPENDENTAL_OT_manufacture_restoration)
     bpy.utils.register_class(OPENDENTAL_OT_assess_contacts)
     bpy.utils.register_class(OPENDENTAL_OT_teeth_arch)
+    bpy.utils.register_class(OPENDENTAL_OT_occlusal_scheme_to_curve)
     bpy.utils.register_class(ViewToZ)
     bpy.utils.register_class(CBGetCrownForm)
     bpy.utils.register_class(OPENDENTAL_OT_pointic_from_crown)
@@ -1666,6 +1736,7 @@ def unregister():
     bpy.utils.unregister_class(ViewToZ)
     bpy.utils.unregister_class(OPENDENTAL_make_solid_restoration)
     bpy.utils.unregister_class(OPENDENTAL_OT_teeth_arch)
+    bpy.utils.unregister_class(OPENDENTAL_OT_occlusal_scheme_to_curve)
     bpy.utils.unregister_class(CBGetCrownForm)
     bpy.utils.unregister_class(OPENDENTAL_OT_pointic_from_crown)
     bpy.utils.unregister_class(OPENDENTAL_OT_lattice_deform)

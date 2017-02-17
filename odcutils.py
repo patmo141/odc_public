@@ -388,7 +388,7 @@ def get_bbox_center(ob, world = True):
     if world:
         mx = ob.matrix_world
     else:
-        mx = Matrix.identity(3)
+        mx = Matrix.Identity(3)
         
     box = Vector((0,0,0))
     for v in ob.bound_box:
@@ -440,7 +440,7 @@ def box_feature_locations(ob, specify):
     returns the location on the bounding box in global coords
     args:
       ob - blender object
-      vector - vector of type Mathutils Vector specifying location eg.. which corner, edge or face
+      specify - vector of type Mathutils Vector specifying location eg.. which corner, edge or face
     examples:
       vector = ((0,0,1)) :: middle of top face
       vector = ((-1,-1,0)) :: left, back, edge midpoint
@@ -1596,7 +1596,6 @@ def obj_list_from_lib(libpath, include = None, exclude = None, debug = False):
         exclude: filter character to exclude based on object name  eg '_'
         debug: Bool or Int  controls how much is printed to console
     '''
-    print("examining foreigh library")
     obj_list = []
     
     with bpy.data.libraries.load(libpath) as (data_from, data_to):
@@ -1774,6 +1773,7 @@ def vert_group_inds_get(context, ob, vgroup, debug = False):
     if debug:
         print('got vgroup indices in %f seconds' % time.time() - start)
     return inds
+
     #do the scene reconstruc thing
 # iterate through verts
 def iterate(points, newVerts, error):

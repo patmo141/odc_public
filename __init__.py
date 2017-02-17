@@ -162,7 +162,7 @@ class ODCAddonPreferences(AddonPreferences):
             description = "Use manual gauge height instead of default bracket prescription")
     
     bracket_gauge = FloatProperty(name="Gauge Height",
-            default=4.5,
+            default=4,
             min = .5,
             max = 7,
             unit = 'LENGTH',
@@ -226,12 +226,35 @@ def save_pre_method(dummy):
     print('prepared splints for save')
     for splint in bpy.context.scene.odc_splints:
         splint.save_components_to_string()
-                        
+
+@persistent
+def pause_playback(scene):
+    if scene.frame_current == scene.frame_end:
+        bpy.ops.screen.animation_play()
+        scene.frame_set(scene.frame_current - 1) #prevent replaying
+        print('REACHED THE END')
+@persistent
+def stop_playback(scene):
+    if scene.frame_current == scene.frame_end:
+        bpy.ops.screen.animation_cancel(restore_frame=False)
+        scene.frame_set(scene.frame_current - 1) #prevent replaying
+        print('REACHED THE END')
+
+# or restore frames:
+@persistent
+def stop_playback_restore(scene):
+    if scene.frame_current == scene.frame_end + 1:
+        bpy.ops.screen.animation_cancel(restore_frame=True)
+        print('REACHED THE END')
+                               
 def register():
     #bpy.utils.register_module(__name__)
     #import the relevant modules
     #from . 
-    import classes, odcutils, crown, margin, bridge, splint, implant, panel, help, flexible_tooth, bracket_placement, denture_base, occlusion #, crown, implant, splint, panel, odcmenus, bgl_utils
+    
+    
+    
+    import classes, odcutils, crown, margin, bridge, splint, implant, panel, help, flexible_tooth, bracket_placement, denture_base, occlusion, ortho # , odcmenus, bgl_utils
         
     #register them
     classes.register()
@@ -247,6 +270,7 @@ def register():
     denture_base.register()
     panel.register()
     occlusion.register()
+    ortho.register()
     #odcmenus.register()
     #bgl_utils.register()
     
@@ -273,6 +297,7 @@ def register():
     
     bpy.app.handlers.load_post.append(load_post_method)
     bpy.app.handlers.save_pre.append(save_pre_method)
+    bpy.app.handlers.frame_change_pre.append(pause_playback)
     
 def unregister():
     #import the relevant modules
@@ -280,6 +305,7 @@ def unregister():
     
     bpy.app.handlers.save_pre.remove(save_pre_method)
     bpy.app.handlers.load_post.remove(load_post_method)
+    bpy.app.handlers.frame_change_pre.remove(pause_playback)
     
     bpy.utils.unregister_module(__name__)
     

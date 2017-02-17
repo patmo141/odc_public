@@ -5,13 +5,15 @@ Created on Feb 8, 2013
 '''
 import bpy
 import bmesh
+from mathutils.bvhtree import BVHTree
 #from . 
 import odcutils
 import crown_methods
 import time
 import math
-from mathutils import Vector, Matrix, Quaternion
-
+from mathutils import Vector, Matrix, Quaternion, Color
+from odcutils import get_com
+from mesh_cut import cross_section_seed_ver1, bound_box
 
 #enums?
 arch_types = ['MAX','MAND','LR','LL','LA','UR','UL','UA']
@@ -22,8 +24,8 @@ for index, arch in enumerate(arch_types):
 
 #dictionaries and constants
 quadrant_dict = {}
-quadrant_dict['MAX'] = [str(i) for i in range(17,10,-1)] + [str(i) for i in range(21,28)]  #CW around the arch wrt z axis  pointing toard occlusals
-quadrant_dict['MAND'] = [str(i) for i in range(47,40,-1)] + [str(i) for i in range(31,38)] #CCW around the arch wrt z axis  pointing toard occlusals
+quadrant_dict['MAX'] = [str(i) for i in range(17,10,-1)] + [str(i) for i in range(21,28)]  #CW around the arch wrt z axis  pointing toward occlusals
+quadrant_dict['MAND'] = [str(i) for i in range(47,40,-1)] + [str(i) for i in range(31,38)] #CCW around the arch wrt z axis  pointing toward occlusals
 quadrant_dict['LR'] = [str(i) for i in range(41,48)]  #this list from midline -> distal
 quadrant_dict['LL'] = [str(i) for i in range(31,38)]  #this list from midline -> distal
 quadrant_dict['LA'] = ['43','42','41','31','32','33']  #notice this list is pt right to left
@@ -351,7 +353,7 @@ def teeth_to_curve(context, arch, sextant, tooth_library, teeth = [], shift = 'B
                     
                 ob.location += (-1 + 2*flip) * tooth_shift
     
-    
+            #TODO, if Middle FIssure and Palatainal Face not present, then need to revert to BBOX Center
             if shift == 'FOSSA':
                 groups = ["Middle Fissure", "Palatinal Face"]
                 inds = []
@@ -387,7 +389,354 @@ def teeth_to_curve(context, arch, sextant, tooth_library, teeth = [], shift = 'B
             
         context.scene.objects.active = ob
         bpy.ops.object.delete()        
+
+def occlusal_scheme_to_curve(context, arch, tooth_library, teeth = [], link = False, flip = False, reorient = True):
+    '''
+    Map's a tooth library that intercuspates onto an arch form
+    args:
+       curve - blender Curve object
+       teeth - list of odc_teeth (actual PythonObject), to link to
+       link - Bool, whether or not to link to/from the teeth list
+       
+       updated method to measure teeth using a cross section  taken
+       at the intersection point of the curve 
+    '''
+
+
+    if "Mirror" in arch.modifiers:
+        print('mirrored, this should not matter')
     
+    mx = arch.matrix_world
+    arch_me = arch.to_mesh(context.scene, apply_modifiers = True, settings = 'PREVIEW')
+
+    arch_vs = [mx*v.co for v in arch_me.vertices]
+    
+    #estiamte occlusal plane for first, mid and last points
+    v_mid = mx * arch_me.vertices[int(len(arch_me.vertices)/2)].co
+    v_0= mx * arch_me.vertices[0].co  #presumed the right side
+    v_n = mx * arch_me.vertices[len(arch_me.vertices)-1].co  #presumed the left side
+    
+    #looking down, assuming v_0 is right side, this CCW direction represents from 1-16 aand 32->17 on the bottom
+    occ_dir = (v_n - v_mid).cross(v_0 - v_mid)
+    occ_dir.normalize()
+    
+    arch_len = 0
+    s_index_map = [0]
+    
+    for i in range(0,len(arch_vs)-1):
+        v0 = arch_vs[i]
+        v1 = arch_vs[i+1]
+        V0 = v1 - v0
+        arch_len += V0.length
+        s_index_map += [arch_len]
+    
+    print('the total arch_len is %f' % arch_len)    
+    max_teeth = ['17','16','15','14','13','12','11','21','22','23','24','25','26','27']
+    mand_teeth = ['47','46','45','44','43','42','41','31','32','33','34','35','36','37']
+    
+    
+    #import/link teeth from the library
+    restorations = []
+    if link and len(context.scene.odc_teeth): 
+        for tooth in context.scene.odc_teeth:
+            if (tooth.name[0:2] in max_teeth) or (tooth.name[0:2] in mand_teeth):
+                #TODO: restoration etc?
+                #we will have to check later if we need to use the restoration
+                #from this tooth
+                restorations.append(tooth.name)
+                  
+    #figure out which objects we are going to distribute.
+    lib_teeth_names = odcutils.obj_list_from_lib(tooth_library) #TODO: check if tooth_library is valid?
+    tooth_objects =[[None]]*len(max_teeth) + [[None]]*len(mand_teeth)
+    
+    for i, planned_tooth in enumerate(max_teeth + mand_teeth):
+        #this will be a one item list
+        tooth_in_scene = [tooth for tooth in context.scene.odc_teeth if tooth.name.startswith(planned_tooth)]
+        if link and len(tooth_in_scene):
+            #check if the restoration is already there...if so, use it
+            if tooth_in_scene[0].contour:
+                tooth_objects[i] = bpy.data.objects[tooth_in_scene[0].contour]
+        
+        #if it's not there, add it in, and associate it with ODCTooth Object
+        else:
+            for tooth in lib_teeth_names:
+                if tooth.startswith(planned_tooth):  #necessary that the planned teeth have logical names
+                        
+                    new_name = tooth + "_ArchPlanned"
+                    if new_name in bpy.data.objects:   
+                        ob = bpy.data.objects[new_name]
+                        me = ob.data
+                        ob.user_clear()
+                        bpy.data.objects.remove(ob)
+                        bpy.data.meshes.remove(me)
+                        context.scene.update()
+                       
+                    odcutils.obj_from_lib(tooth_library, tooth)
+                    ob = bpy.data.objects[tooth]
+                    context.scene.objects.link(ob)
+                    ob.name = new_name
+                    tooth_objects[i] = ob
+                    if link and len(tooth_in_scene):
+                        tooth_in_scene[0].contour = ob.name
+                    break #in case there are multiple copies?
+    
+    def cache_to_grease(verts):
+        
+        if not bpy.context.scene.grease_pencil:
+            gp = bpy.data.grease_pencil.new('Bracket')
+            bpy.context.scene.grease_pencil = gp
+        else:
+            gp = bpy.context.scene.grease_pencil
+            print(gp.name)
+            #clear existing layers.  Dangerous if bracketing on a non bracket...
+        if gp.layers:
+            layers = [l for l in gp.layers]
+            for l in layers:
+                gp.layers.remove(l)
+        
+        slice_layer = gp.layers.new('Slice')
+        slice_layer.color = Color((.8,.1,.1))
+        if slice_layer.frames:
+            fr = slice_layer.active_frame
+        else:
+            fr = slice_layer.frames.new(1) 
+            
+        # Create a new stroke
+        strx = fr.strokes.new()
+        strx.draw_mode = '3DSPACE' 
+        strx.points.add(count = len(verts))
+        for i, pt in enumerate(verts):
+            strx.points[i].co = pt    
+        return
+    
+    def get_tooth_mes_distal(tooth_ob, loc = None):
+        "returns mesial and distal contact in local coords"
+        
+        if loc:
+            print('found by cross section')
+            bme = bmesh.new()
+            bme.from_object(tooth_ob, bpy.context.scene, deform=True, render=False, cage=False, face_normals=True)
+            bvh = BVHTree.FromBMesh(bme)
+            
+            mx = tooth_ob.matrix_world
+            Y = mx.to_3x3() * Vector((0,1,0))
+            pt, no, seed, dist = bvh.find_nearest(loc)
+            verts, eds = cross_section_seed_ver1(bme, mx, mx*pt, Y, seed, max_tests = 100)
+             
+            m_loc_hi_res = max(verts, key = lambda x: x[0])
+            d_loc_hi_res = min(verts, key = lambda x: x[0])
+            
+            bme.free()
+            
+        elif "Mesial Contact" and "Distal Contact" in tooth_ob.vertex_groups:
+            gi_m = tooth_ob.vertex_groups["Mesial Contact"].index
+            gi_d = tooth_ob.vertex_groups["Distal Contact"].index
+        
+            m_verts = []
+            d_verts = []
+            for v in tooth_ob.data.vertices:
+                for g in v.groups:
+                    if g.group == gi_m:
+                        m_verts += [v.co]
+                    elif g.group == gi_d:
+                        d_verts += [v.co]
+        
+            #find the center of mass of the mesial and disatl vertex groups
+            m_loc, d_loc  = Vector((0,0,0)), Vector((0,0,0))
+            for v in m_verts: m_loc += 1/len(m_verts) * v
+            for v in d_verts: d_loc += 1/len(d_verts) * v
+            
+            #since verts are before multires sculpting, need to snap to actual surface
+            res, m_loc_hi_res, no, d = tooth_ob.closest_point_on_mesh(m_loc)
+            res, d_loc_hi_res, no, d = tooth_ob.closest_point_on_mesh(d_loc)
+            
+        else:
+            imx = tooth_ob.matrix_world.inverted()
+            
+            m_loc_hi_res = imx *odcutils.box_feature_locations(tooth_ob, Vector((1,0,0)))
+            d_loc_hi_res = imx * odcutils.box_feature_locations(tooth_ob, Vector((-1,0,0)))
+            
+            
+        return m_loc_hi_res, d_loc_hi_res
+    
+    def get_cusp_position(tooth_ob):
+        groups = ["Incisal Edge", "Distobuccal Cusp","Mesiobuccal Cusp", "Buccal Cusp"]
+        inds = []
+        for vgroup in groups:
+            if vgroup in tooth_ob.vertex_groups:
+                inds += odcutils.vert_group_inds_get(context, tooth_ob, vgroup)
+        
+        vs = [tooth_ob.data.vertices[i].co for i in inds]
+        
+        #find the highest cusp in local space
+        v_max = max(vs, key = lambda v: v[2])
+        res, snap, normal, ind = tooth_ob.closest_point_on_mesh(v_max)
+        
+        return snap
+    
+    def get_fossa_position(tooth_ob):
+        groups = ["Middle Fissure", "Palatinal Face"]
+        inds = []
+        for vgroup in groups:
+            if vgroup in tooth_ob.vertex_groups:
+                inds += odcutils.vert_group_inds_get(context, tooth_ob, vgroup)
+        
+                if vgroup == "Palatinal Face":
+                    #find the local middle of the palatal face
+                    mx = Matrix.Identity(4)
+                    com = odcutils.get_com(tooth_ob.data, inds, mx)              
+                    res, snap, normal, ind = tooth_ob.closest_point_on_mesh(com)
+                else:
+                    #find the lowest part of central groove in local Z        
+                    vs = [tooth_ob.data.vertices[i].co for i in inds]
+                    v_min = min(vs, key = lambda v: v[2])                
+                    res, snap, normal, ind = tooth_ob.closest_point_on_mesh(v_min)
+                    
+        return snap
+    
+    max_total_len = 0
+    max_lengths = [[0]] * 14
+    max_path_locs = [[0]] * 14
+    max_snap = [[0]] * 14
+    
+    
+    mand_total_len = 0
+    mand_lengths = [[0]] * 14
+    mand_path_locs = [[0]] * 14    
+    mand_snap = [[0]] * 14
+    
+    context.scene.update()
+    
+    #gather a BUNCH of data
+    for i in range(0,14):
+        
+        #this iterates over the teeth right to left
+        max_fossa = get_fossa_position(tooth_objects[i])
+        
+        if i > 3 and i < 10:
+            max_mes, max_dis = get_tooth_mes_distal(tooth_objects[i], loc = max_fossa)
+            max_mes1, max_dis1 = get_tooth_mes_distal(tooth_objects[i])
+            
+            mx1 = tooth_objects[i].matrix_world
+            max_md_width = (mx1 * max_mes - mx1 * max_dis).length
+            max_md_width1 = (mx1 * max_mes1 - mx1 * max_dis1).length
+            
+            print('Cross Section Width %f, box width %f' % (max_md_width, max_md_width1))
+            
+        else:
+            max_mes, max_dis = get_tooth_mes_distal(tooth_objects[i])
+        
+        
+        mx1 = tooth_objects[i].matrix_world
+        
+        man_mes, man_dis = get_tooth_mes_distal(tooth_objects[i+14])
+        man_cusp = get_cusp_position(tooth_objects[i+14])
+        mx2 = tooth_objects[i+14].matrix_world
+        
+        #world width of tooth
+        max_md_width = (mx1 * max_mes - mx1 * max_dis).length
+        man_md_width = (mx2 * man_mes - mx2 * man_dis).length
+        
+        #local midpoint between mes and distal contact
+        max_md_mid  = .5 * (max_mes + max_dis)
+        mand_md_mid = .5 * (man_mes + man_dis)
+        
+        max_snap[i] = max_md_mid[0], max_fossa[1], max_fossa[2]
+        mand_snap[i] = mand_md_mid[0], man_cusp[1], man_cusp[2]
+        
+        #world path length of all previous teeth up to midpoint mes/distal of this tooth
+        max_path_locs[i]  = max_total_len + .5 * max_md_width
+        mand_path_locs[i] = mand_total_len + .5 * max_md_width
+        
+        #world path length of all teeth up to this point
+        max_total_len  += max_md_width
+        mand_total_len += man_md_width
+        
+    
+    offset = 0.5 * (max_total_len - mand_total_len)    
+    scale = arch_len/max_total_len
+    print(s_index_map)
+    def location_along_verts(s):
+        d0 = 0
+        v = arch_vs[-1]  #in case we don't find a d > s
+        tangent = arch_vs[-1] - arch_vs[-2]
+        tangent.normalize
+         
+        for i, d in enumerate(s_index_map):
+            
+            if d >= s:
+                if i == 0:
+                    tangent = arch_vs[i+1] - arch_vs[i]
+                    tangent.normalize()
+                    v = arch_vs[0] +  d * tangent
+                    return v, tangent 
+                
+                d0 = s_index_map[i-1]
+                tangent = arch_vs[i] - arch_vs[i-1]
+                tangent.normalize()
+                v = arch_vs[i-1] +  (s-d0) * tangent
+                return v, tangent
+            else:
+                d0 = d
+        
+        return v, tangent
+
+    def transform_tooth(tooth_ob, curve_loc, x_dir, z_dir, snap_local, scale):
+        
+        orig_loc, orig_rot, orig_scale = tooth_ob.matrix_world.decompose()
+        orig_scale[0]*= scale
+        orig_scale[1]*= scale
+        orig_scale[2]*= scale
+        
+        x_dir.normalize()
+        z_dir.normalize()
+        
+        y_dir = z_dir.cross(x_dir)
+        z_cor = x_dir.cross(y_dir)  #pure lock to path
+        x_cor = y_dir.cross(z_dir)  #pure lock to occlusal direction
+         
+        M = Matrix.Identity(3)
+        M[0][0], M[1][1], M[2][2] = orig_scale[0], orig_scale[1], orig_scale[2]
+        matScl = M.to_4x4()
+        
+        M = Matrix.Identity(3)
+        #make the columns of matrix X, Y, Z
+        M[0][0], M[0][1], M[0][2]  = x_dir[0] ,y_dir[0],  z_cor[0]
+        M[1][0], M[1][1], M[1][2]  = x_dir[1], y_dir[1],  z_cor[1]
+        M[2][0] ,M[2][1], M[2][2]  = x_dir[2], y_dir[2],  z_cor[2]
+        matRot = M.to_4x4()
+        
+        #now we build our shift, but since the snap point is local,
+        #we need to transform the shift first, then apply it
+        snap_world = matRot*matScl*Vector(snap_local)
+        delta = curve_loc - snap_world
+        matTrans = Matrix.Translation(delta)
+        
+        return matTrans * matRot * matScl
+        
+    for i in range(0,14):
+        #compute position on curve for each tooth
+        # s = path_length
+        
+        s_max = scale * max_path_locs[i]  
+        s_mand = scale * (mand_path_locs[i] + offset)  
+        
+        loc_max, x_dir_max = location_along_verts(s_max)
+        
+        loc_mand, x_dir_man = location_along_verts(s_mand)
+        
+        if i > 6:
+            x_dir_max *= -1
+            x_dir_man *= -1
+        
+        
+        wrld_mx0 = transform_tooth(tooth_objects[i], loc_max, x_dir_max, -occ_dir, max_snap[i], scale)
+        tooth_objects[i].matrix_world = wrld_mx0
+        
+        wrld_mx1 = transform_tooth(tooth_objects[i+14], loc_mand, x_dir_man, occ_dir, mand_snap[i], scale)
+        tooth_objects[i+14].matrix_world = wrld_mx1
+        
+        
 def keep_arch_plan(context, curve, debug = False):
     '''
     context = bpy.context

@@ -271,6 +271,7 @@ class OPENDENTAL_OT_keep_hook(bpy.types.Operator):
         layers_copy = [layer for layer in context.scene.layers]
         context.scene.layers[0] = True
         
+        to_delete = []
         for ob in context.selected_objects:
             mods = [mod.type for mod in ob.modifiers]
             if 'HOOK' not in mods:
@@ -284,7 +285,7 @@ class OPENDENTAL_OT_keep_hook(bpy.types.Operator):
             ob.select = True
             ob.lock_location = [False, False, False]
             #ob.hide_select = False    
-            to_delete = []
+            
             for mod in ob.modifiers:
                 if mod.type in {'HOOK','LAPLACIANDEFORM'}:
                     ob.hide = False
