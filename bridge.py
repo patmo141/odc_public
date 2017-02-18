@@ -133,7 +133,7 @@ class OPENDENTAL_OT_bridge_boolean(bpy.types.Operator):
             for i in range(1, len(left_contours)):
                 print('adding boolean modifier')
                 mod = left_bridge_ob.modifiers.new(str(i), 'BOOLEAN')
-                mod.operation = 'INTERSECT'
+                mod.operation = 'UNION'
                 mod.object = left_contours[i]
                 print(left_contours[i].name)
             
@@ -169,7 +169,7 @@ class OPENDENTAL_OT_bridge_boolean(bpy.types.Operator):
             
         if len(left_teeth) and len(right_teeth):
             mod = left_bridge_ob.modifiers.new('Midline', 'BOOLEAN')
-            mod.operation = 'DIFFERENCE'
+            mod.operation = 'UNION'
             mod.object = right_bridge_ob
             
             left_bridge_ob.update_tag()
@@ -270,7 +270,7 @@ class OPENDENTAL_OT_solid_bridge(bpy.types.Operator):
         bpy.ops.object.select_all(action = 'DESELECT')
         for ob in join_obs:
             ob.select = True
-            
+        Bridge.hide = False    
         Bridge.select = True
         context.scene.objects.active = Bridge
         
