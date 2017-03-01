@@ -19,7 +19,7 @@ from bpy_extras import view3d_utils
 from common_utilities import bversion
 import common_drawing
 import bgl_utils
-from mesh_cut import cross_section_seed_ver1, bound_box
+from mesh_cut import cross_section_seed_ver1, bound_box, edge_loops_from_bmedges
 from textbox import TextBox
 from odcutils import get_settings, obj_list_from_lib, obj_from_lib
 import odcmenus.menu_utils as menu_utils
@@ -321,6 +321,63 @@ class OPENDENTAL_OT_add_bone_roots(bpy.types.Operator):
         self._handle = bpy.types.SpaceView3D.draw_handler_add(insertion_axis_draw_callback, (self, context), 'WINDOW', 'POST_PIXEL')
         return {'RUNNING_MODAL'}
 
+class OPENDENTAL_OT_simple_ortho_base(bpy.types.Operator):
+    """Simple ortho base with height 5 - 50mm """
+    bl_idname = "opendental.simple_base"
+    bl_label = "Simple model base"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    base_height = bpy.props.FloatProperty(name = 'Base Height', default = 10, min = -50, max = 50,  description = 'Base height added in mm')
+    
+    @classmethod
+    def poll(cls, context):
+        if context.mode == "OBJECT" and context.object != None and context.object.type == 'MESH':
+            return True
+        else:
+            return False
+        
+    def execute(self, context):
+        
+        bme = bmesh.new()
+        bme.from_mesh(context.object.data)
+        
+        bme.verts.ensure_lookup_table()
+        bme.edges.ensure_lookup_table()
+        bme.faces.ensure_lookup_table()
+        
+        non_man_eds = [ed.index for ed in bme.edges if not ed.is_manifold]
+        loops = edge_loops_from_bmedges(bme, non_man_eds)
+                
+                
+        if len(loops)>1:
+            biggest_loop = max(loops, key = len)
+        else:
+            biggest_loop = loops[0]
+            
+        
+        if biggest_loop[0] != biggest_loop[-1]:
+            
+            print('Biggest loop not a hole!')
+            bme.free() 
+            
+            return {'FINISHED'}
+        
+        biggest_loop.pop()
+        
+        com = Vector((0,0,0))
+        for vind in biggest_loop:
+            com += bme.verts[vind].co
+        com *= 1/len(biggest_loop)
+        
+        for vind in biggest_loop:
+            bme.verts[vind].co[2] = com[2] + self.base_height
+        
+        bme.faces.new([bme.verts[vind] for vind in biggest_loop])
+        bmesh.ops.recalc_face_normals(bme, faces = bme.faces)
+        bme.to_mesh(context.object.data)
+        bme.free()             
+        return {'FINISHED'}
+    
 class OPENDENTAL_OT_setup_root_parenting(bpy.types.Operator):
     """Prepares model for gingival simulation"""
     bl_idname = "opendental.set_roots_parents"
@@ -887,6 +944,7 @@ def register():
     bpy.utils.register_class(OPENDENTAL_OT_add_forcefields)
     bpy.utils.register_class(OPENDENTAL_OT_physics_setup)
     bpy.utils.register_class(OPENDENTAL_OT_physics_scene)
+    bpy.utils.register_class(OPENDENTAL_OT_simple_ortho_base)
     
     
     
@@ -907,7 +965,7 @@ def unregister():
     bpy.utils.unregister_class(OPENDENTAL_OT_add_forcefields)
     bpy.utils.unregister_class(OPENDENTAL_OT_physics_setup)
     bpy.utils.unregister_class(OPENDENTAL_OT_physics_scene)
-    
+    bpy.utils.unregister_class(OPENDENTAL_OT_simple_ortho_base)
     
 if __name__ == "__main__":
     register()

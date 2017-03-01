@@ -394,7 +394,70 @@ class OPENDENTAL_OT_meta_custom_tray(bpy.types.Operator):
         row.prop(self, "tray_offset")
         row = layout.row()
         row.prop(self, "finalize")
-           
+
+
+class OPENDENTAL_OT_simple_offset_surface(bpy.types.Operator):
+    """Simple normal offset 0 - 2mm """
+    bl_idname = "opendental.simple_offset_surface"
+    bl_label = "Simple Meta Surface"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    offset = FloatProperty(default = 0.3, min = -3, max = 3,  description = 'Distance to offset')
+    duplicate = BoolProperty(default = False , description = 'Will create new object, leaving original in tact')
+    smooth = BoolProperty(default = True, description = 'Will add smooth modifier to attempt to remove self intersections')
+    shrink = smooth = BoolProperty(default = False, description = 'Will add shrinkwrap modifier to attempt to reoffset after smoothing')
+    
+    @classmethod
+    def poll(cls, context):
+        if context.mode == "OBJECT" and context.object != None and context.object.type == 'MESH':
+            return True
+        else:
+            return False
+        
+    def execute(self, context):
+        
+        ob = context.object
+        mx = ob.matrix_world
+        
+        if not self.duplicate:
+            for v in ob.data.vertices:
+                v.co += self.offset*v.normal
+            
+            return {'FINISHED'}
+        
+        
+        # Copy Material if any
+        if ob.data.materials:
+            mat = ob.data.materials[0]
+            
+        me = context.object.to_mesh(context.scene, apply_modifiers = True, settings = 'PREVIEW')
+        
+        nos = [v.normal for v in me.vertices]
+        for i, v in enumerate(me.vertices):
+            v.co += self.offset * nos[i]
+            
+            
+        new_ob = bpy.data.objects.new(ob.name + '_offset', me)
+        context.scene.objects.link(new_ob)
+        new_ob.matrix_world = mx
+        if ob.data.materials:
+            new_ob.data.materials.append(mat)
+        if self.smooth:
+            smod = new_ob.modifiers.new('Smooth', type = 'SMOOTH')
+            smod.iterations = 10
+            
+        if self.duplicate and self.shrink:
+            swmod = new_ob.modifiers.new('Shrinkwrap', type = 'SHRINKWRAP')
+            swmod.wrap_method = 'NEAREST_SURFACEPOINT'
+            swmod.offset = self.offset
+            swmod.use_keep_above_surface = True
+            swmod.target = ob
+            
+            smod = new_ob.modifiers.new('Smooth', type = 'SMOOTH')
+            smod.iterations = 10
+                  
+        return {'FINISHED'}
+               
 class OPENDENTAL_OT_boolean_intaglio(bpy.types.Operator):
     """Add boolean modifier to remove intaglio surfaec"""
     bl_idname = "opendental.denture_boolean_intaglio"
@@ -445,11 +508,14 @@ def register():
     bpy.utils.register_class(OPENDENTAL_OT_prepare_meta_scaffold)
     bpy.utils.register_class(OPENDENTAL_OT_meta_rim_from_curve)
     bpy.utils.register_class(OPENDENTAL_OT_boolean_intaglio)
+    bpy.utils.register_class(OPENDENTAL_OT_simple_offset_surface)
 def unregister():
     bpy.utils.unregister_class(OPENDENTAL_OT_meta_offset_surface)
     bpy.utils.unregister_class(OPENDENTAL_OT_meta_custom_tray)
     bpy.utils.unregister_class(OPENDENTAL_OT_prepare_meta_scaffold)
     bpy.utils.unregister_class(OPENDENTAL_OT_meta_rim_from_curve)
     bpy.utils.unregister_class(OPENDENTAL_OT_boolean_intaglio)
+    bpy.utils.unregister_class(OPENDENTAL_OT_simple_offset_surface)
+    
 if __name__ == "__main__":
     register()

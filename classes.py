@@ -599,12 +599,13 @@ def unregister():
     ODCProps.unregister()
     ODCSettings.unregister()
     
+    
     ToothRestoration.unregister()
     ImplantRestoration.unregister()
     BridgeRestoration.unregister()
     SplintRestoration.unregister()
     
-    #functions to add new class isntances into collections
+    #functions to add remove class isntances into collections
     bpy.utils.unregister_class(OPENDENTAL_OT_add_tooth_restoration)
     bpy.utils.unregister_class(ImplantRestorationAdd)
     bpy.utils.unregister_class(BridgeRestorationRemove)

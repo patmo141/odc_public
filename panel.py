@@ -521,7 +521,35 @@ class VIEW3D_PT_ODCDentures(bpy.types.Panel):
         
         col.operator("opendental.denture_boolean_intaglio", text = "Boolean with Master Cast")
         
-             
+        
+        
+class VIEW3D_PT_ODCModels(bpy.types.Panel):
+    bl_space_type = "VIEW_3D"
+    bl_region_type="TOOLS"
+    bl_category = "Open Dental CAD"
+    bl_label = "Model Operations"
+    bl_context = ""
+    
+    def draw(self, context):
+        sce = bpy.context.scene
+        layout = self.layout
+        
+        addon_prefs = get_settings()
+        
+        row = layout.row()
+        row.label(text = "Model Operators")
+        row.operator("wm.url_open", text = "", icon="INFO").url = "https://github.com/patmo141/odc_public/wiki"
+        
+        row = layout.row()
+        col = row.column(align=True)
+        
+        col.operator("opendental.meta_scaffold_create", text = "Decimate Surface")
+        col.operator("opendental.meta_offset_surface", text = "Meta Offset Surface")
+        if context.object and context.object.type == 'META':
+            col.operator("object.convert", text = "Convert Meta Surface to Mesh")
+            
+        col.operator("opendental.simple_offset_surface", text = "Simple Offset")
+        col.operator("opendental.simple_base", text = "Simple Base")            
 def register():
     bpy.utils.register_class(SCENE_UL_odc_teeth)
     bpy.utils.register_class(SCENE_UL_odc_implants)
@@ -534,6 +562,7 @@ def register():
     bpy.utils.register_class(VIEW3D_PT_ODCSplints)
     bpy.utils.register_class(VIEW3D_PT_ODCOrtho)
     bpy.utils.register_class(VIEW3D_PT_ODCDentures)
+    bpy.utils.register_class(VIEW3D_PT_ODCModels)
     #bpy.utils.register_module(__name__)
     
 def unregister():
@@ -549,6 +578,6 @@ def unregister():
     bpy.utils.unregister_class(VIEW3D_PT_ODCSplints)
     bpy.utils.unregister_class(VIEW3D_PT_ODCOrtho)
     bpy.utils.unregister_class(VIEW3D_PT_ODCDentures)
-    
+    bpy.utils.unregister_class(VIEW3D_PT_ODCModels)
 if __name__ == "__main__":
     register()

@@ -25,7 +25,7 @@ bl_info = {
     'name': "Open Dental CAD for Blender",
     'author': "Patrick R. Moore",
     'version': (1,0,2),
-    'blender': (2, 7, 6),
+    'blender': (2, 7, 8),
     'api': 59393,
     'location': "3D View -> Tool Shelf",
     'description': "Dental CAD Tool Package",
@@ -307,8 +307,9 @@ def unregister():
     bpy.app.handlers.load_post.remove(load_post_method)
     bpy.app.handlers.frame_change_pre.remove(pause_playback)
     
-    bpy.utils.unregister_module(__name__)
-    
+    #bpy.utils.unregister_module(__name__)
+    bpy.utils.unregister_class(ODCAddonPreferences)
+    bpy.utils.unregister_class(OPENDENTAL_OT_addon_prefs_odc)
     
     #unregister them
     classes.unregister()
