@@ -197,8 +197,8 @@ class OPENDENTAL_OT_place_implant(bpy.types.Operator):
         #    bpy.ops.object.mode_set(mode = 'OBJECT')
         
         sce = context.scene
-        n = sce.odc_implant_index
-        implant_space = sce.odc_implants[n]
+        #n = sce.odc_implant_index
+        #implant_space = sce.odc_implants[n]
         
         implants = odcutils.implant_selection(context)
         layers_copy = [layer for layer in context.scene.layers]
@@ -302,6 +302,27 @@ class OPENDENTAL_OT_place_implant(bpy.types.Operator):
                     
                 odcutils.layer_management(sce.odc_implants, debug = dbg)
         
+        else:
+            world_mx = Matrix.Identity(4)
+            world_mx[0][3]=sce.cursor_location[0]
+            world_mx[1][3]=sce.cursor_location[1]
+            world_mx[2][3]=sce.cursor_location[2]
+                                    
+            #is this more memory friendly than listing all objects?
+            current_obs = [ob.name for ob in bpy.data.objects]
+            
+            #link the new implant from the library
+            odcutils.obj_from_lib(settings.imp_lib,self.imp)
+            
+            #this is slightly more robust than trusting we don't have duplicate names.
+            for ob in bpy.data.objects:
+                if ob.name not in current_obs:
+                    Implant = ob
+                    
+            sce.objects.link(Implant)
+            Implant.matrix_world = world_mx  
+            
+            
         for i, layer in enumerate(layers_copy):
             context.scene.layers[i] = layer
         context.scene.layers[11] = True           

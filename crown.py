@@ -1495,6 +1495,7 @@ class OPENDENTAL_OT_grind_occlusion(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         #restoration exists and is in scene
+        if not len(odcutils.tooth_selection(context)): return False
         tooth = odcutils.tooth_selection(context)[0]  #TODO: make this poll work for all selected teeth...
         condition_3 = tooth.opposing and tooth.opposing in bpy.data.objects
         condition_4 = tooth.contour and tooth.contour in bpy.data.objects

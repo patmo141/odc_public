@@ -24,6 +24,7 @@ from textbox import TextBox
 from odcutils import get_settings, obj_list_from_lib, obj_from_lib
 import odcmenus.menu_utils as menu_utils
 
+
 #TODO, better system for tooth # systems
 TOOTH_NUMBERS = [11,12,13,14,15,16,17,18,
                  21,22,23,24,25,26,27,28,
@@ -34,7 +35,12 @@ def insertion_axis_draw_callback(self, context):
     self.help_box.draw()
     self.target_box.draw()
     bgl_utils.insertion_axis_callback(self,context)
+ 
+def rapid_label_teeth_callback(self, context):
+    self.help_box.draw()
+    self.target_box.draw()
     
+        
 class OPENDENTAL_OT_add_bone_roots(bpy.types.Operator):
     """Set the axis and direction of the roots for crowns from view"""
     bl_idname = "opendental.add_bone_roots"
@@ -321,6 +327,196 @@ class OPENDENTAL_OT_add_bone_roots(bpy.types.Operator):
         self._handle = bpy.types.SpaceView3D.draw_handler_add(insertion_axis_draw_callback, (self, context), 'WINDOW', 'POST_PIXEL')
         return {'RUNNING_MODAL'}
 
+class OPENDENTAL_OT_fast_label_teeth(bpy.types.Operator):
+    """Label teeth by clicking on them"""
+    bl_idname = "opendental.fast_label_teeth"
+    bl_label = "Fast Label Teeth"
+    bl_options = {'REGISTER','UNDO'}
+    
+    @classmethod
+    def poll(self,context):
+        if context.mode != 'OBJECT':
+            return False
+        else:
+            return True
+        
+    def set_axis(self, context, event):
+        
+            
+        coord = (event.mouse_region_x, event.mouse_region_y)
+        v3d = context.space_data
+        rv3d = v3d.region_3d
+        view_vector = view3d_utils.region_2d_to_vector_3d(context.region, rv3d, coord)
+        ray_origin = view3d_utils.region_2d_to_origin_3d(context.region, rv3d, coord)
+        ray_target = ray_origin + (view_vector * 1000)
+        if bversion() < '002.077.000':
+            res, obj, loc, no, mx = context.scene.ray_cast(ray_origin, ray_target)
+        else:
+            res, loc, no, ind, obj, mx = context.scene.ray_cast(ray_origin, view_vector)
+        
+        if res:
+            obj.name = str(self.target)
+            for ob in bpy.data.objects:
+                ob.select = False
+            obj.select = True
+            obj.show_name = True
+            context.scene.objects.active = obj
+            bpy.ops.object.origin_set(type = 'ORIGIN_GEOMETRY', center = 'BOUNDS')
+            return True
+        else:
+            return False       
+    def advance_next_prep(self,context):
+        
+        def next_ind(n):
+            if math.fmod(n, 10) < 7:
+                return n + 1
+            elif math.fmod(n, 10) == 7:
+                if n == 17: return 21
+                elif n== 27: return 31
+                elif n == 37: return 41
+                elif n == 47: return 11
+           
+            
+        self.target = next_ind(self.target)
+        self.message = "Click on tooth % i" % self.target
+        self.target_box.raw_text = self.message
+        self.target_box.format_and_wrap_text()
+        self.target_box.fit_box_width_to_text_lines()
+
+              
+    def select_prev_unit(self,context):
+        
+        
+        def prev_ind(n):
+            if math.fmod(n, 10) > 1:
+                return n - 1
+            elif math.fmod(n, 10) == 1:
+                if n == 11: return 41
+                elif n== 21: return 11
+                elif n == 31: return 21
+                elif n == 41: return 31
+                
+                
+        self.target = prev_ind(self.target)
+       
+        self.message = "Click on tooth %s" % setr(self.target)
+        self.target_box.raw_text = self.message
+        self.target_box.format_and_wrap_text()
+        self.target_box.fit_box_width_to_text_lines()
+    
+           
+    def modal_main(self, context, event):
+        # general navigation
+        nmode = self.modal_nav(event)
+        if nmode != '':
+            return nmode  #stop here and tell parent modal to 'PASS_THROUGH'
+
+        if event.type in {'RIGHTMOUSE'} and event.value == 'PRESS':
+            self.advance_next_prep(context)
+            return 'pass'
+        
+        elif event.type in {'LEFTMOUSE'} and event.value == 'PRESS':
+            res = self.set_axis(context, event)
+            if res:
+                self.advance_next_prep(context)
+            return 'main'
+        
+        elif event.type in {'DOWN_ARROW'} and event.value == 'PRESS':
+            self.select_prev_unit(context)
+            return 'main'
+        
+        elif event.type in {'UP_ARROW'} and event.value == 'PRESS':
+            self.advance_next_prep(context)
+            return 'main'
+                    
+        elif event.type in {'ESC'}:
+            #keep track of and delete new objects? reset old transforms?
+            return'cancel'
+        
+        elif event.type in {'RET'} and event.value == 'PRESS':
+            #self.empties_to_bones(context)
+            return 'finish'
+        
+        return 'main'
+        
+    def modal_nav(self, event):
+        events_nav = {'MIDDLEMOUSE', 'WHEELINMOUSE','WHEELOUTMOUSE', 'WHEELUPMOUSE','WHEELDOWNMOUSE'} #TODO, better navigation, another tutorial
+        handle_nav = False
+        handle_nav |= event.type in events_nav
+
+        if handle_nav: 
+            return 'nav'
+        return ''
+
+    def modal(self, context, event):
+        context.area.tag_redraw()
+
+        FSM = {}    
+        FSM['main']    = self.modal_main
+        FSM['pass']    = self.modal_main
+        FSM['nav']     = self.modal_nav
+        
+        nmode = FSM[self.mode](context, event)
+
+        if nmode == 'nav': 
+            return {'PASS_THROUGH'}
+        
+        if nmode in {'finish','cancel'}:
+            #clean up callbacks
+            bpy.types.SpaceView3D.draw_handler_remove(self._handle, 'WINDOW')
+            return {'FINISHED'} if nmode == 'finish' else {'CANCELLED'}
+        if nmode == 'pass':
+            self.mode = 'main'
+            return {'PASS_THROUGH'}
+        
+        if nmode: self.mode = nmode
+        
+        return {'RUNNING_MODAL'}
+     
+    def invoke(self, context, event):
+        settings = get_settings()
+        dbg = settings.debug
+        
+        if context.space_data.region_3d.is_perspective:
+            #context.space_data.region_3d.is_perspective = False
+            bpy.ops.view3d.view_persportho()
+            
+        if context.space_data.type != 'VIEW_3D':
+            self.report({'WARNING'}, "Active space must be a View3d")
+            return {'CANCELLED'}
+
+        #gather all the teeth in the scene TODO, keep better track
+
+        
+        
+        
+        self.target = 11
+        self.message = "Set axis for " + str(self.target)
+            
+        
+        if context.mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode = 'OBJECT')
+                
+        #check for an armature
+        bpy.ops.object.select_all(action = 'DESELECT')
+            
+        help_txt = "Left click on the tooth indicated to label it. Right click skip a tooth \n Up or Dn Arrow to change label\n Enter to finish \n ESC to cancel"
+        self.help_box = TextBox(context,500,500,300,200,10,20,help_txt)
+        self.help_box.fit_box_width_to_text_lines()
+        self.help_box.fit_box_height_to_text_lines()
+        self.help_box.snap_to_corner(context, corner = [1,1])
+        
+        aspect, mid = menu_utils.view3d_get_size_and_mid(context)
+        self.target_box = TextBox(context,mid[0],aspect[1]-20,300,200,10,20,self.message)
+        self.target_box.format_and_wrap_text()
+        self.target_box.fit_box_width_to_text_lines()
+        self.target_box.fit_box_height_to_text_lines()
+        
+        self.mode = 'main'
+        context.window_manager.modal_handler_add(self)
+        self._handle = bpy.types.SpaceView3D.draw_handler_add(rapid_label_teeth_callback, (self, context), 'WINDOW', 'POST_PIXEL')
+        return {'RUNNING_MODAL'}
+    
 class OPENDENTAL_OT_simple_ortho_base(bpy.types.Operator):
     """Simple ortho base with height 5 - 50mm """
     bl_idname = "opendental.simple_base"
@@ -933,6 +1129,7 @@ def register():
     bpy.utils.register_class(OPENDENTAL_OT_left_view)
     bpy.utils.register_class(OPENDENTAL_OT_right_view)
     bpy.utils.register_class(OPENDENTAL_OT_add_bone_roots)
+    bpy.utils.register_class(OPENDENTAL_OT_fast_label_teeth)
     bpy.utils.register_class(OPENDENTAL_OT_adjust_roots)
     bpy.utils.register_class(OPENDENTAL_OT_setup_root_parenting)
     bpy.utils.register_class(OPENDENTAL_OT_set_treatment_keyframe)
@@ -954,6 +1151,7 @@ def unregister():
     bpy.utils.unregister_class(OPENDENTAL_OT_left_view)
     bpy.utils.unregister_class(OPENDENTAL_OT_right_view)
     bpy.utils.unregister_class(OPENDENTAL_OT_add_bone_roots)
+    bpy.utils.unregister_class(OPENDENTAL_OT_fast_label_teeth)
     bpy.utils.unregister_class(OPENDENTAL_OT_setup_root_parenting)
     bpy.utils.unregister_class(OPENDENTAL_OT_set_treatment_keyframe)
     bpy.utils.unregister_class(OPENDENTAL_OT_adjust_roots)
