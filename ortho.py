@@ -399,7 +399,7 @@ class OPENDENTAL_OT_fast_label_teeth(bpy.types.Operator):
                 
         self.target = prev_ind(self.target)
        
-        self.message = "Click on tooth %s" % setr(self.target)
+        self.message = "Click on tooth %i" % self.target
         self.target_box.raw_text = self.message
         self.target_box.format_and_wrap_text()
         self.target_box.fit_box_width_to_text_lines()
