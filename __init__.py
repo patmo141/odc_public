@@ -24,8 +24,8 @@
 bl_info = {
     'name': "Open Dental CAD for Blender",
     'author': "Patrick R. Moore",
-    'version': (1,0,2),
-    'blender': (2, 7, 8),
+    'version': (1,0,3),
+    'blender': (2, 80, 0),
     'api': 59393,
     'location': "3D View -> Tool Shelf",
     'description': "Dental CAD Tool Package",
@@ -75,7 +75,7 @@ def update_brackets(self,context):
 class ODCAddonPreferences(AddonPreferences):
     bl_idname = __name__
 
-    addons = bpy.context.user_preferences.addons
+    addons = bpy.context.preferences.addons
     
     folderpath = os.path.dirname(os.path.abspath(__file__))
     print('SETTINGS FOLDERPATH')
@@ -193,8 +193,8 @@ class OPENDENTAL_OT_addon_prefs_odc(Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        user_preferences = context.user_preferences
-        addon_prefs = user_preferences.addons[__name__].preferences
+        preferences = context.preferences
+        addon_prefs = preferences.addons[__name__].preferences
 
         info = ("Path: %s, Number: %d, Boolean %r" %
                 (addon_prefs.filepath, addon_prefs.number, addon_prefs.boolean))

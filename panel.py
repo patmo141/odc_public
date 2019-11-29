@@ -70,7 +70,7 @@ class SCENE_UL_odc_splints(bpy.types.UIList):
             
 class VIEW3D_PT_ODCSettings(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
-    bl_region_type="TOOLS"
+    bl_region_type="UI"
     bl_category = "Open Dental CAD"
     bl_label = "ODC Control Panel"
     bl_context = ""
