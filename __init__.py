@@ -23,7 +23,7 @@
 
 bl_info = {
     'name': "Open Dental CAD for Blender",
-    'author': "Patrick R. Moore",
+    'author': "Patrick R. Moore GT",
     'version': (1,0,3),
     'blender': (2, 80, 0),
     'api': 59393,
