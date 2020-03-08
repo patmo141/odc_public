@@ -28,7 +28,7 @@ from common_utilities import bversion
 #Borrowed from retopoflow @CGCookie, Jonathan Wiliamson, Jon Denning, Patrick Moore
 def get_settings():
     if not get_settings.cached_settings:
-        addons = bpy.context.user_preferences.addons
+        addons = bpy.context.preferences.addons
         #frame = inspect.currentframe()
         #frame.f_code.co_filename
         folderpath = os.path.dirname(os.path.abspath(__file__))
@@ -660,7 +660,7 @@ def tooth_selection(context):
         
     elif behave_mode == 'ACTIVE':
         #test the active object, if nothing...default to item_list
-        if context.object and context.object.select == True:
+        if context.object and context.object.select_get == True:
             ob = context.object
             tooth = active_odc_item_candidate(sce.odc_teeth, ob,[])
             if tooth:
@@ -669,7 +669,7 @@ def tooth_selection(context):
 
     elif behave_mode == 'ACTIVE_SELECTED':
         #test active object and selected objects
-        if context.object and context.object.select == True:
+        if context.object and context.object.select_get == True:
             #test the active object
             ob = context.object
             tooth = active_odc_item_candidate(sce.odc_teeth, ob,[])
@@ -1017,7 +1017,7 @@ def material_management(context, odc_items, force = False, debug = False):
     if debug:
         starttime = time.time()
     
-    if context.user_preferences.filepaths.use_relative_paths:
+    if context.preferences.filepaths.use_relative_paths:
         print('user settings -> file -> uncheck Relative Paths')
         return
     

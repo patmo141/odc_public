@@ -20,14 +20,14 @@ class SCENE_UL_odc_teeth(bpy.types.UIList):
             # You should always start your row layout by a label (icon + text), this will also make the row easily
             # selectable in the list!
             # We use icon_value of label, as our given icon is an integer value, not an enum ID.
-            layout.label(tooth.name)
+            layout.label(text=tooth.name)
             # And now we can add other UI stuff...
             # Here, we add nodes info if this material uses (old!) shading nodes.
 
         # 'GRID' layout type should be as compact as possible (typically a single icon!).
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'
-            layout.label("", icon_value="NODE")
+            layout.label(text="", icon_value="NODE")
             
 class SCENE_UL_odc_implants(bpy.types.UIList):
 
@@ -36,11 +36,11 @@ class SCENE_UL_odc_implants(bpy.types.UIList):
         implant = item
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             
-            layout.label(implant.name)
+            layout.label(text=implant.name)
 
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'
-            layout.label("", icon_value="NODE")
+            layout.label(text="", icon_value="NODE")
             
 class SCENE_UL_odc_bridges(bpy.types.UIList):
 
@@ -49,11 +49,11 @@ class SCENE_UL_odc_bridges(bpy.types.UIList):
         bridge = item
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             
-            layout.label(bridge.name)
+            layout.label(text=bridge.name)
 
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'
-            layout.label("", icon_value="NODE")
+            layout.label(text="", icon_value="NODE")
 
 class SCENE_UL_odc_splints(bpy.types.UIList):
 
@@ -62,15 +62,15 @@ class SCENE_UL_odc_splints(bpy.types.UIList):
         splint = item
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             
-            layout.label(splint.name)
+            layout.label(text=splint.name)
 
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'
-            layout.label("", icon_value="NODE")
+            layout.label(text="", icon_value="NODE")
             
 class VIEW3D_PT_ODCSettings(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
-    bl_region_type="UI"
+    bl_region_type="UI" #blender 2.7 and lower = TOOLS
     bl_category = "Open Dental CAD"
     bl_label = "ODC Control Panel"
     bl_context = ""
@@ -112,7 +112,7 @@ class VIEW3D_PT_ODCSettings(bpy.types.Panel):
         
 class VIEW3D_PT_ODCTeeth(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
-    bl_region_type="TOOLS"
+    bl_region_type="UI" #blender 2.7 and lower = TOOLS
     bl_category = "Open Dental CAD"
     bl_label = "Tooth Restorations"
     bl_context = ""
@@ -218,7 +218,7 @@ class VIEW3D_PT_ODCTeeth(bpy.types.Panel):
         
 class VIEW3D_PT_ODCImplants(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
-    bl_region_type="TOOLS"
+    bl_region_type="UI" #blender 2.7 and lower = TOOLS
     bl_category = "Open Dental CAD"
     bl_label = "Implant Restorations"
     bl_context = ""
@@ -272,7 +272,7 @@ class VIEW3D_PT_ODCImplants(bpy.types.Panel):
             
 class VIEW3D_PT_ODCBridges(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
-    bl_region_type="TOOLS"
+    bl_region_type="UI" #blender 2.7 and lower = TOOLS
     bl_category = "Open Dental CAD"
     bl_label = "Bridge Restorations"
     bl_context = ""
@@ -334,7 +334,7 @@ class VIEW3D_PT_ODCBridges(bpy.types.Panel):
         
 class VIEW3D_PT_ODCSplints(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
-    bl_region_type="TOOLS"
+    bl_region_type="UI" #blender 2.7 and lower = TOOLS
     bl_category = "Open Dental CAD"
     bl_label = "Splints"
     bl_context = ""
@@ -398,7 +398,7 @@ class VIEW3D_PT_ODCSplints(bpy.types.Panel):
         
 class VIEW3D_PT_ODCOrtho(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
-    bl_region_type="TOOLS"
+    bl_region_type="UI" #blender 2.7 and lower = TOOLS
     bl_category = "Open Dental CAD"
     bl_label = "Orthodontics"
     bl_context = ""
@@ -491,7 +491,7 @@ class VIEW3D_PT_ODCOrtho(bpy.types.Panel):
         
 class VIEW3D_PT_ODCDentures(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
-    bl_region_type="TOOLS"
+    bl_region_type="UI" #blender 2.7 and lower = TOOLS
     bl_category = "Open Dental CAD"
     bl_label = "Dentures"
     bl_context = ""
@@ -525,7 +525,7 @@ class VIEW3D_PT_ODCDentures(bpy.types.Panel):
         
 class VIEW3D_PT_ODCModels(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
-    bl_region_type="TOOLS"
+    bl_region_type="UI" #blender 2.7 and lower = TOOLS
     bl_category = "Open Dental CAD"
     bl_label = "Model Operations"
     bl_context = ""
