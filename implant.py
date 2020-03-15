@@ -109,8 +109,8 @@ class OPENDENTAL_OT_implant_from_contour(bpy.types.Operator):
         teeth = odcutils.tooth_selection(context)
         sce = bpy.context.scene
         
-        layers_copy = [layer for layer in context.scene.layers]
-        context.scene.layers[0] 
+        layers_copy = [layer for layer in context.scene.collection.all_objects]
+        context.scene.collection.all_objects[0] 
         
         for tooth in teeth:
             
@@ -123,13 +123,13 @@ class OPENDENTAL_OT_implant_from_contour(bpy.types.Operator):
                     if tooth.axis:
                         Axis = bpy.data.objects.get(tooth.axis)
                         if Axis:
-                            neg_z = Axis.matrix_world.to_quaternion() * Z
+                            neg_z = Axis.matrix_world.to_quaternion() @ Z
                             rot_diff = odcutils.rot_between_vecs(Vector((0,0,1)), neg_z)
                         else:
-                            neg_z = contour.matrix_world.to_quaternion() * Z
+                            neg_z = contour.matrix_world.to_quaternion() @ Z
                             rot_diff = odcutils.rot_between_vecs(Vector((0,0,1)), neg_z)
                     else:
-                        neg_z = contour.matrix_world.to_quaternion() * Z
+                        neg_z = contour.matrix_world.to_quaternion() @ Z
                         rot_diff = odcutils.rot_between_vecs(Vector((0,0,1)), neg_z)
                     mx = contour.matrix_world
                     x = mx[0][3]
@@ -143,7 +143,7 @@ class OPENDENTAL_OT_implant_from_contour(bpy.types.Operator):
                     
                     #reposition platform below CEJ
                     world_mx = Imp.matrix_world
-                    delta =  Imp.dimensions[2] * world_mx.to_3x3() * Vector((0,0,1)) + self.depth * world_mx.to_3x3() * Vector((0,0,1))
+                    delta =  Imp.dimensions[2] * world_mx.to_3x3() @ Vector((0,0,1)) + self.depth @ world_mx.to_3x3() @ Vector((0,0,1))
                     
                     world_mx[0][3] += delta[0]
                     world_mx[1][3] += delta[1]
@@ -152,8 +152,8 @@ class OPENDENTAL_OT_implant_from_contour(bpy.types.Operator):
         
         odcutils.layer_management(sce.odc_implants, debug = False)
         for i, layer in enumerate(layers_copy):
-            context.scene.layers[i] = layer
-        context.scene.layers[11] = True
+            context.scene.collection.all_objects[i] = layer
+        context.scene.collection.all_objects[11] = True
         
         return {'FINISHED'}
         
@@ -201,8 +201,8 @@ class OPENDENTAL_OT_place_implant(bpy.types.Operator):
         #implant_space = sce.odc_implants[n]
         
         implants = odcutils.implant_selection(context)
-        layers_copy = [layer for layer in context.scene.layers]
-        context.scene.layers[0] 
+        layers_copy = [layer for layer in context.scene.collection.all_objects]
+        context.scene.collection.all_objects[0] 
         
         if implants != []:
         
@@ -222,7 +222,7 @@ class OPENDENTAL_OT_place_implant(bpy.types.Operator):
                     #the platorm is the length of the implant above the apex, in the local Z direction
                     #local Z positive is out the apex, soit's negative.
                     #Put the cursor there
-                    sce.cursor_location = L - Implant.dimensions[2] * world_mx.to_3x3() *  Vector((0,0,1))
+                    sce.cursor.location = L - Implant.dimensions[2] * world_mx.to_3x3() @  Vector((0,0,1))
                                         
                     #first get rid of children...so we can use the
                     #parent to find out who the children are
@@ -244,9 +244,9 @@ class OPENDENTAL_OT_place_implant(bpy.types.Operator):
                 else:
                     world_mx = Matrix.Identity(4)
                     
-                world_mx[0][3]=sce.cursor_location[0]
-                world_mx[1][3]=sce.cursor_location[1]
-                world_mx[2][3]=sce.cursor_location[2]
+                world_mx[0][3]=sce.cursor.location[0]
+                world_mx[1][3]=sce.cursor.location[1]
+                world_mx[2][3]=sce.cursor.location[2]
                                         
                 #is this more memory friendly than listing all objects?
                 current_obs = [ob.name for ob in bpy.data.objects]
@@ -259,7 +259,7 @@ class OPENDENTAL_OT_place_implant(bpy.types.Operator):
                     if ob.name not in current_obs:
                         Implant = ob
                         
-                sce.objects.link(Implant)
+                context.collection.objects.link(Implant)
                 
                 #this relies on the associated hardware objects having the parent implant
                 #name inside them
@@ -274,12 +274,12 @@ class OPENDENTAL_OT_place_implant(bpy.types.Operator):
                 
                     for ob in bpy.data.objects:
                         if ob.name not in current_obs:
-                            sce.objects.link(ob)
+                            context.collection.objects.link(ob)
                             ob.parent = Implant
                             ob.layers[11] = True
                 
 
-                delta =  Implant.dimensions[2] * world_mx.to_3x3() * Vector((0,0,1))
+                delta =  Implant.dimensions[2] * world_mx.to_3x3() @ Vector((0,0,1))
                 print(delta.length)
                 world_mx[0][3] += delta[0]
                 world_mx[1][3] += delta[1]
@@ -304,9 +304,9 @@ class OPENDENTAL_OT_place_implant(bpy.types.Operator):
         
         else:
             world_mx = Matrix.Identity(4)
-            world_mx[0][3]=sce.cursor_location[0]
-            world_mx[1][3]=sce.cursor_location[1]
-            world_mx[2][3]=sce.cursor_location[2]
+            world_mx[0][3]=sce.cursor.location[0]
+            world_mx[1][3]=sce.cursor.location[1]
+            world_mx[2][3]=sce.cursor.location[2]
                                     
             #is this more memory friendly than listing all objects?
             current_obs = [ob.name for ob in bpy.data.objects]
@@ -319,13 +319,13 @@ class OPENDENTAL_OT_place_implant(bpy.types.Operator):
                 if ob.name not in current_obs:
                     Implant = ob
                     
-            sce.objects.link(Implant)
+            context.collection.objects.link(Implant)
             Implant.matrix_world = world_mx  
             
             
         for i, layer in enumerate(layers_copy):
-            context.scene.layers[i] = layer
-        context.scene.layers[11] = True           
+            context.scene.collection.all_objects[i] = layer
+        context.scene.collection.all_objects[11] = True           
         return {'FINISHED'}
 
 class OPENDENTAL_OT_place_sleeve(bpy.types.Operator):
@@ -369,8 +369,8 @@ class OPENDENTAL_OT_place_sleeve(bpy.types.Operator):
         #    bpy.ops.object.mode_set(mode = 'OBJECT')
         
         sce = context.scene
-        layers_copy = [layer for layer in context.scene.layers]
-        context.scene.layers[0] = True
+        layers_copy = [layer for layer in context.scene.collection.all_objects]
+        context.scene.collection.all_objects[0] = True
         
         implants = odcutils.implant_selection(context)
         
@@ -404,7 +404,7 @@ class OPENDENTAL_OT_place_sleeve(bpy.types.Operator):
                     if ob.name not in current_obs:
                         Sleeve = ob
                         
-                sce.objects.link(Sleeve)
+                context.collection.objects.link(Sleeve)
                 
                 mx_w = Implant.matrix_world.copy()
                 #point the right direction
@@ -412,7 +412,7 @@ class OPENDENTAL_OT_place_sleeve(bpy.types.Operator):
                 Sleeve.rotation_quaternion = mx_w.to_quaternion()          
                 Sleeve.update_tag()
                 context.scene.update()   
-                Trans = Sleeve.rotation_quaternion * Vector((0,0,-self.depth))
+                Trans = Sleeve.rotation_quaternion @ Vector((0,0,-self.depth))
                 Sleeve.matrix_world[0][3] = mx_w[0][3] + Trans[0]
                 Sleeve.matrix_world[1][3] = mx_w[1][3] + Trans[1]
                 Sleeve.matrix_world[2][3] = mx_w[2][3] + Trans[2]
@@ -425,8 +425,8 @@ class OPENDENTAL_OT_place_sleeve(bpy.types.Operator):
                 odcutils.layer_management(sce.odc_implants, debug = dbg)
         
         for i, layer in enumerate(layers_copy):
-            context.scene.layers[i] = layer
-        context.scene.layers[19] = True
+            context.scene.collection.all_objects[i] = layer
+        context.scene.collection.all_objects[19] = True
                         
         return {'FINISHED'}
     
@@ -473,8 +473,8 @@ class OPENDENTAL_OT_place_drill(bpy.types.Operator):
         sce = context.scene
         implants = odcutils.implant_selection(context)
         
-        layers_copy = [layer for layer in context.scene.layers]
-        context.scene.layers[0] = True
+        layers_copy = [layer for layer in context.scene.collection.all_objects]
+        context.scene.collection.all_objects[0] = True
         
         if implants != []:
         
@@ -508,7 +508,7 @@ class OPENDENTAL_OT_place_drill(bpy.types.Operator):
                     if ob.name not in current_obs:
                         Sleeve = ob
                         
-                sce.objects.link(Sleeve)
+                context.collection.objects.link(Sleeve)
                 Sleeve.layers[19] = True
                 mx_w = Implant.matrix_world.copy()
                 #point the right direction
@@ -516,7 +516,7 @@ class OPENDENTAL_OT_place_drill(bpy.types.Operator):
                 Sleeve.rotation_quaternion = mx_w.to_quaternion()          
                 Sleeve.update_tag()
                 context.scene.update()   
-                Trans = Sleeve.rotation_quaternion * Vector((0,0,-self.depth))
+                Trans = Sleeve.rotation_quaternion @ Vector((0,0,-self.depth))
                 Sleeve.matrix_world[0][3] = mx_w[0][3] + Trans[0]
                 Sleeve.matrix_world[1][3] = mx_w[1][3] + Trans[1]
                 Sleeve.matrix_world[2][3] = mx_w[2][3] + Trans[2]
@@ -528,8 +528,8 @@ class OPENDENTAL_OT_place_drill(bpy.types.Operator):
                 odcutils.parent_in_place(Sleeve, Implant)
                 odcutils.layer_management(sce.odc_implants, debug = dbg)
         for i, layer in enumerate(layers_copy):
-            context.scene.layers[i] = layer
-        context.scene.layers[19] = True                
+            context.scene.collection.all_objects[i] = layer
+        context.scene.collection.all_objects[19] = True                
         return {'FINISHED'}
     
 class OPENDENTAL_OT_implant_guide_cylinder(bpy.types.Operator):
@@ -557,8 +557,8 @@ class OPENDENTAL_OT_implant_guide_cylinder(bpy.types.Operator):
         dbg  = settings.debug
         odcutils.scene_verification(context.scene, debug = dbg)
         spaces = odcutils.implant_selection(context)
-        layers_copy = [layer for layer in context.scene.layers]
-        context.scene.layers[0] = True
+        layers_copy = [layer for layer in context.scene.collection.all_objects]
+        context.scene.collection.all_objects[0] = True
         
         if context.mode != 'OBJECT':
             bpy.ops.object.mode_set(mode='OBJECT')
@@ -580,8 +580,8 @@ class OPENDENTAL_OT_implant_guide_cylinder(bpy.types.Operator):
         odcutils.layer_management(context.scene.odc_implants, debug = dbg)
         
         for i, layer in enumerate(layers_copy):
-            context.scene.layers[i] = layer
-        context.scene.layers[19] = True
+            context.scene.collection.all_objects[i] = layer
+        context.scene.collection.all_objects[19] = True
         return {'FINISHED'}
  
 class OPENDENTAL_OT_implant_inner_cylinder(bpy.types.Operator):
@@ -602,8 +602,8 @@ class OPENDENTAL_OT_implant_inner_cylinder(bpy.types.Operator):
         dbg  = settings.debug
         odcutils.scene_verification(context.scene, debug = dbg)
         spaces = odcutils.implant_selection(context)
-        layers_copy = [layer for layer in context.scene.layers]
-        context.scene.layers[0] = True
+        layers_copy = [layer for layer in context.scene.collection.all_objects]
+        context.scene.collection.all_objects[0] = True
         
         if context.mode != 'OBJECT':
             bpy.ops.object.mode_set(mode='OBJECT')
@@ -624,8 +624,8 @@ class OPENDENTAL_OT_implant_inner_cylinder(bpy.types.Operator):
         odcutils.material_management(context, context.scene.odc_implants) 
         odcutils.layer_management(context.scene.odc_implants, debug = dbg)
         for i, layer in enumerate(layers_copy):
-            context.scene.layers[i] = layer
-        context.scene.layers[9] = True
+            context.scene.collection.all_objects[i] = layer
+        context.scene.collection.all_objects[9] = True
         return {'FINISHED'}   
             
 def post_register2():

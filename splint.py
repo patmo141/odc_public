@@ -1138,7 +1138,7 @@ class OPENDENTAL_OT_survey_model(bpy.types.Operator):
         settings = get_settings()
         dbg = settings.debug
         ob = context.object
-        view = context.space_data.region_3d.view_rotation * Vector((0,0,1))
+        view = context.space_data.region_3d.view_rotation @ Vector((0,0,1))
         odcutils.silouette_brute_force(context, ob, view, self.world, self.smooth, debug = dbg)
         return {'FINISHED'}
 
@@ -1166,7 +1166,7 @@ class OPENDENTAL_OT_blockout_model(bpy.types.Operator):
         settings = get_settings()
         dbg = settings.debug
         ob = context.object
-        view = context.space_data.region_3d.view_rotation * Vector((0,0,1))
+        view = context.space_data.region_3d.view_rotation @ Vector((0,0,1))
         bmesh_fns.remove_undercuts(context, ob, view, self.world, self.smooth)
         return {'FINISHED'}
           

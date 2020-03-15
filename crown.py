@@ -39,18 +39,19 @@ class OPENDENTAL_OT_center_all_objects(bpy.types.Operator):
     bl_options = {'REGISTER','UNDO'}
     
     def execute(self,context):
-        sce = bpy.context.scene
+        #sce = bpy.context.scene #2.79
         #gather all the objects
-        objects = [ob for ob in sce.objects] #don't want this to update
+        objects = [ob for ob in bpy.context.scene.objects] #don't want this to update #2.79 sce.objects
         
         #put all their origins at their medianpoint
         bpy.ops.object.select_all(action='DESELECT')
         for ob in objects:
-            sce.objects.active = ob
-            ob.hide = False
-            ob.select = True
+            #sce.objects.active_object = ob #2.79
+            bpy.context.view_layer.objects.active = ob
+            ob.hide_set(False)
+            ob.select_set(state=True)
             bpy.ops.object.origin_set(type = 'ORIGIN_GEOMETRY', center = 'BOUNDS')
-            ob.select = False
+            ob.select_set(state=False)
             
         #calculate the median point of all the objects
         Med = Vector((0,0,0))
