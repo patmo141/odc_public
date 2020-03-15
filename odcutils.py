@@ -2436,7 +2436,7 @@ def silouette_brute_force(context, ob, view, world = True, smooth = True, debug 
         start = time.time()
         
     #careful, this can get expensive with multires
-    me = ob.to_mesh(context.scene, True, 'RENDER')    
+    me = ob.to_mesh()  #2.79   to_mesh(context.scene, True, 'RENDER') 
     bme = bmesh.new()
     bme.from_mesh(me)
     bme.normal_update()
@@ -2448,7 +2448,7 @@ def silouette_brute_force(context, ob, view, world = True, smooth = True, debug 
         #meaning the vector is in world coords
         #we need to take it back into local
         i_mx = mx.inverted()
-        view = i_mx.to_quaternion() * view
+        view = i_mx.to_quaternion() @ view
     
     if debug:
         face_time = time.time()
@@ -2493,8 +2493,8 @@ def silouette_brute_force(context, ob, view, world = True, smooth = True, debug 
     
     
     #https://svn.blender.org/svnroot/bf-blender/trunk/blender/source/blender/bmesh/intern/bmesh_operator_api.h
-    bmesh.ops.delete(bme, geom = bme.faces, context = 3)
-    bmesh.ops.delete(bme, geom = delete_verts, context = 1)
+    bmesh.ops.delete(bme, geom = bme.faces, context = 'FACES_ONLY')
+    bmesh.ops.delete(bme, geom = delete_verts, context = 'VERTS')
     #bmesh.ops.delete(bme, geom = delete_edges, context = 2)  #presuming the delte enum is 0 = verts, 1 = edges, 2 = faces?  who knows.
     
     new_me = bpy.data.meshes.new(ob.name + '_silhouette')
@@ -2502,10 +2502,10 @@ def silouette_brute_force(context, ob, view, world = True, smooth = True, debug 
     bme.free()
     
     obj = bpy.data.objects.new(new_me.name, new_me)
-    context.scene.objects.link(obj)
+    context.collection.objects.link(obj)
     
-    obj.select = True
-    context.scene.objects.active = obj
+    obj.select_set(state=True) #2.79 obj.select = True
+    context.view_layer.objects.active = obj
     
     if world:
         obj.matrix_world = mx

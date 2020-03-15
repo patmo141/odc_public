@@ -20,7 +20,7 @@ def remove_undercuts(context, ob, view, world = True, smooth = True, epsilon = .
     
         
     #careful, this can get expensive with multires
-    me = ob.to_mesh(context.scene, True, 'RENDER')    
+    me = ob.to_mesh()    #2.79 ob.to_mesh(context.scene, True, 'RENDER')
     bme = bmesh.new()
     bme.from_mesh(me)
     bme.normal_update()
@@ -37,7 +37,7 @@ def remove_undercuts(context, ob, view, world = True, smooth = True, epsilon = .
         #meaning the vector is in world coords
         #we need to take it back into local
         i_mx = mx.inverted()
-        view = i_mx.to_quaternion() * view
+        view = i_mx.to_quaternion() @ view
             
     face_directions = [[0]] * len(bme.faces)
     
@@ -203,13 +203,13 @@ def remove_undercuts(context, ob, view, world = True, smooth = True, epsilon = .
     for f in new_fs:
         f.select_set(True)
         
-    bmesh.ops.delete(bme, geom = list(del_faces), context = 3)
+    bmesh.ops.delete(bme, geom = list(del_faces), context = 'FACES_ONLY')
     
     del_verts = []
     for v in bme.verts:
         if all([f in del_faces for f in v.link_faces]):
             del_verts += [v]        
-    bmesh.ops.delete(bme, geom = del_verts, context = 1)
+    bmesh.ops.delete(bme, geom = del_verts, context = 'VERTS')
     
     
     del_edges = []
@@ -217,7 +217,7 @@ def remove_undercuts(context, ob, view, world = True, smooth = True, epsilon = .
         if len(ed.link_faces) == 0:
             del_edges += [ed]
     print('deleting %i edges' % len(del_edges))
-    bmesh.ops.delete(bme, geom = del_edges, context = 4) 
+    bmesh.ops.delete(bme, geom = del_edges, context = 'EDGES_FACES') 
     bmesh.ops.recalc_face_normals(bme, faces = new_fs)
     
     bme.normal_update()
@@ -225,10 +225,10 @@ def remove_undercuts(context, ob, view, world = True, smooth = True, epsilon = .
     new_me = bpy.data.meshes.new(ob.name + '_blockout')
     
     obj = bpy.data.objects.new(new_me.name, new_me)
-    context.scene.objects.link(obj)
+    context.collection.objects.link(obj)
     
-    obj.select = True
-    context.scene.objects.active = obj
+    obj.select_set(state=True)
+    context.view_layer.objects.active = obj
     
     bme.to_mesh(obj.data)
     # Get material
@@ -247,7 +247,7 @@ def remove_undercuts(context, ob, view, world = True, smooth = True, epsilon = .
     if mat2 is None:
         # create material
         mat2 = bpy.data.materials.new(name="Undercut Material")
-        mat2.diffuse_color = Color((0.8, .2, .2))
+        mat2.diffuse_color = (0.8, 0.8, 0.2, 0.2) #2.79 = Color((0.8, .2, .2))
     
 
     obj.data.materials.append(mat2)
