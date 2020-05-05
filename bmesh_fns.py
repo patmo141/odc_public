@@ -32,7 +32,8 @@ def remove_undercuts(context, ob, view, world = True, smooth = True, epsilon = .
     
     #keep track of the world matrix
     mx = ob.matrix_world
-    
+    print(mx)
+    print("STRING TEST")
     if world:
         #meaning the vector is in world coords
         #we need to take it back into local
