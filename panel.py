@@ -331,13 +331,15 @@ class VIEW3D_PT_ODCBridges(bpy.types.Panel):
         
         row = layout.row()
         row.operator("opendental.solid_bridge", text = "Join Intaglios to Shell")
-        
+    
 class VIEW3D_PT_ODCSplints(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
     bl_region_type="UI" #blender 2.7 and lower = TOOLS
     bl_category = "Open Dental CAD"
     bl_label = "Splints"
     bl_context = ""
+
+    #undercut_solver_mode_options = bpy.props.EnumProperty(items= (("opendental.view_blockout_undercuts", "Patrick's Method", "", 1), ("opendental.view_blockout_undercuts_issam", "Issam's Method", "", 2)), name="undercut_solvers")
     
     def draw(self, context):
         if not context.scene.odc_props.show_splint:
@@ -365,12 +367,6 @@ class VIEW3D_PT_ODCSplints(bpy.types.Panel):
         #col.operator("opendental.add_implant_restoration", text = "Add a Space")
         col.operator("opendental.add_splint", text = "Start a Splint")
         col.operator("opendental.remove_splint", text = "Remove Splint")
-        
-        row = layout.row()
-        row.operator("opendental.view_silhouette_survey", text = "Survey Model Undercuts")
-        
-        row = layout.row()
-        row.operator("opendental.view_blockout_undercuts", text = "Blockout Model Undercuts")
         
         row = layout.row()
         row.operator("opendental.model_set", text = "Set Model")
@@ -522,7 +518,16 @@ class VIEW3D_PT_ODCDentures(bpy.types.Panel):
         col.operator("opendental.denture_boolean_intaglio", text = "Boolean with Master Cast")
         
         
-        
+class UNDERCUTS_props(bpy.types.PropertyGroup):
+
+    Models = ["Preview", "Solid"]
+    items = []
+    for i in range(len(Models)):
+        item = (str(Models[i]), str(Models[i]), str(""), int(i))
+        items.append(item)
+
+    Modelsprop: bpy.props.EnumProperty(items=items, description="", default="Solid")
+          
 class VIEW3D_PT_ODCModels(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
     bl_region_type="UI" #blender 2.7 and lower = TOOLS
@@ -549,7 +554,23 @@ class VIEW3D_PT_ODCModels(bpy.types.Panel):
             col.operator("object.convert", text = "Convert Meta Surface to Mesh")
             
         col.operator("opendental.simple_offset_surface", text = "Simple Offset")
-        col.operator("opendental.simple_base", text = "Simple Base")            
+        #col.operator("opendental.simple_base", text = "Simple Base")
+
+        row = layout.row()
+        row.operator("opendental.view_silhouette_survey", text = "Survey Model Undercuts")
+
+        row = layout.row()
+        props = context.scene.UNDERCUTS_props
+        Modelsprop = props.Modelsprop
+        row.prop(props, "Modelsprop", text="Select Algorithm")
+        row.operator("opendental.view_blockout_undercuts", text="Create Blockout")
+        
+        #row = layout.row()
+        #row.operator("opendental.view_blockout_undercuts", text = "Blockout Model Undercuts")
+
+        row = layout.row()
+        row.operator("opendental.project_model_base", text = "Project Base")
+        
 def register():
     bpy.utils.register_class(SCENE_UL_odc_teeth)
     bpy.utils.register_class(SCENE_UL_odc_implants)
@@ -564,6 +585,10 @@ def register():
     bpy.utils.register_class(VIEW3D_PT_ODCDentures)
     bpy.utils.register_class(VIEW3D_PT_ODCModels)
     #bpy.utils.register_module(__name__)
+    bpy.utils.register_class(UNDERCUTS_props)
+    # Register UNDERCUTS_props
+    bpy.types.Scene.UNDERCUTS_props = bpy.props.PointerProperty(type=UNDERCUTS_props)
+    
     
 def unregister():
     bpy.utils.unregister_class(SCENE_UL_odc_teeth)
@@ -579,5 +604,10 @@ def unregister():
     bpy.utils.unregister_class(VIEW3D_PT_ODCOrtho)
     bpy.utils.unregister_class(VIEW3D_PT_ODCDentures)
     bpy.utils.unregister_class(VIEW3D_PT_ODCModels)
+
+    bpy.utils.unregister_class(UNDERCUTS_props)
+    # $ delete UNDERCUTS_props  on unregister
+    del bpy.types.Scene.UNDERCUTS_props
+
 if __name__ == "__main__":
     register()
