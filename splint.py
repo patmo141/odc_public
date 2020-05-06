@@ -25,7 +25,7 @@ import math
 from math import degrees, radians, pi
 
 from mathutils import Vector
-import mesh_helpers
+#import mesh_helpers
 import bmesh
 
 
