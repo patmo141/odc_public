@@ -3,49 +3,69 @@ import bmesh
 from bpy.types import Panel
 
 def create_material(name):   
-        if name in bpy.data.materials: #if material already exists, just configure it
-            ob = bpy.context.object
-            me = ob.data
-            print("Material already exists: "+ name+ "; changing...")
-            index = bpy.data.materials.find(name)
-            mat = bpy.data.materials[index]
+    if name in bpy.data.materials: #if material already exists, just configure it
+        ob = bpy.context.object
+        me = ob.data
+        print("Material already exists: "+ name+ "; changing...")
+        index = bpy.data.materials.find(name)
+        mat = bpy.data.materials[index]
+        mat.diffuse_color = (0.295508, 0.439708, 0.8, 0.5)
+        mat.metallic = 1
+        mat.roughness = 0.02
+
+        if len(ob.material_slots) < 1: #check if the material slot already exists and use it
+            me.materials.append(mat)
+        else:
+            bpy.ops.object.material_slot_remove()
+            me.materials.append(mat)
+
+    else: #Repeat in case material doesnt exist, bue creating it first
+        ob = bpy.context.object
+        me = ob.data        
+        if len(ob.material_slots) < 1:
+            mat = bpy.data.materials.new(name=name)
             mat.diffuse_color = (0.295508, 0.439708, 0.8, 0.5)
             mat.metallic = 1
             mat.roughness = 0.02
+            me.materials.append(mat)
+        else:
+            bpy.ops.object.material_slot_remove()
+            mat = bpy.data.materials.new(name=name)
+            mat.diffuse_color = (0.295508, 0.439708, 0.8, 0.5)
+            mat.metallic = 1
+            mat.roughness = 0.02
+            print("color " + name+" was created")
+            me.materials.append(mat)
 
-            if len(ob.material_slots) < 1: #check if the material slot already exists and use it
-                me.materials.append(mat)
-            else:
-                bpy.ops.object.material_slot_remove()
-                me.materials.append(mat)
-
-        else: #Repeat in case material doesnt exist, bue creating it first
-            ob = bpy.context.object
-            me = ob.data        
-            if len(ob.material_slots) < 1:
-                mat = bpy.data.materials.new(name=name)
-                mat.diffuse_color = (0.295508, 0.439708, 0.8, 0.5)
-                mat.metallic = 1
-                mat.roughness = 0.02
-                me.materials.append(mat)
-            else:
-                bpy.ops.object.material_slot_remove()
-                mat = bpy.data.materials.new(name=name)
-                mat.diffuse_color = (0.295508, 0.439708, 0.8, 0.5)
-                mat.metallic = 1
-                mat.roughness = 0.02
-                print("color " + name+" was created")
-                me.materials.append(mat)
-
-                return {'FINISHED'} 
+            
 
 def create_particles(name, vertexgroup): #Same process as with material but with a particle system, a bit more complicated
-        if name in bpy.context.object.particle_systems:
-            ob = bpy.context.object
-            me = ob.data
-            print("Particles system already exists: "+ name+ "; changing...")
-            index = bpy.context.object.particle_systems.find(name)
+    if name in bpy.context.object.particle_systems:
+        ob = bpy.context.object
+        me = ob.data
+        print("Particles system already exists: "+ name+ "; changing...")
+        index = bpy.context.object.particle_systems.find(name)
+        part = bpy.data.particles[index]
+        part.type = 'HAIR'
+        part.use_advanced_hair = True
+        part.render_type = 'OBJECT'
+        bpy.context.object.particle_systems[name].vertex_group_density = vertexgroup
+        part.particle_size = 0.2
+        part.count = 10000
+        part.hair_length = 6
+
+    else:
+        ob = bpy.context.object
+        me = ob.data   
+        bpy.ops.object.particle_system_add()
+        bpy.context.object.particle_systems[0].name = name
+
+        findparticles = name in bpy.data.particles
+        finddefaultp = 'ParticleSettings' in bpy.data.particles
+
+        if findparticles == True:
             part = bpy.data.particles[index]
+            part.name = name
             part.type = 'HAIR'
             part.use_advanced_hair = True
             part.render_type = 'OBJECT'
@@ -53,18 +73,10 @@ def create_particles(name, vertexgroup): #Same process as with material but with
             part.particle_size = 0.2
             part.count = 10000
             part.hair_length = 6
-
+            me.particles.append(part)
         else:
-            ob = bpy.context.object
-            me = ob.data   
-            bpy.ops.object.particle_system_add()
-            bpy.context.object.particle_systems[0].name = name
-
-            findparticles = name in bpy.data.particles
-            finddefaultp = 'ParticleSettings' in bpy.data.particles
-    
-            if findparticles == True:
-                part = bpy.data.particles[index]
+            if finddefaultp == True:
+                part = bpy.data.particles[0]
                 part.name = name
                 part.type = 'HAIR'
                 part.use_advanced_hair = True
@@ -73,34 +85,19 @@ def create_particles(name, vertexgroup): #Same process as with material but with
                 part.particle_size = 0.2
                 part.count = 10000
                 part.hair_length = 6
-                me.particles.append(part)
+
             else:
-                if finddefaultp == True:
-                    part = bpy.data.particles[0]
-                    part.name = name
-                    part.type = 'HAIR'
-                    part.use_advanced_hair = True
-                    part.render_type = 'OBJECT'
-                    bpy.context.object.particle_systems[name].vertex_group_density = vertexgroup
-                    part.particle_size = 0.2
-                    part.count = 10000
-                    part.hair_length = 6
 
-                else:
-
-                    part = bpy.data.particles.new(name=name)
-                    part.name = name
-                    part.type = 'HAIR'
-                    part.use_advanced_hair = True
-                    part.render_type = 'OBJECT'
-                    bpy.context.object.particle_systems[name].vertex_group_density = vertexgroup
-                    part.particle_size = 0.2
-                    part.count = 10000
-                    part.hair_length = 6
-                    me.particles.append(part)
-    
-
-                return {'FINISHED'} 
+                part = bpy.data.particles.new(name=name)
+                part.name = name
+                part.type = 'HAIR'
+                part.use_advanced_hair = True
+                part.render_type = 'OBJECT'
+                bpy.context.object.particle_systems[name].vertex_group_density = vertexgroup
+                part.particle_size = 0.2
+                part.count = 10000
+                part.hair_length = 6
+                me.particles.append(part) 
     
 
 
@@ -241,14 +238,7 @@ class btn_Splint_make(bpy.types.Operator):
         objs = [ob for ob in bpy.context.scene.objects if ob.type in ('METABALL')]
         bpy.ops.object.delete({"selected_objects": objs})
 
-        
-        
-
-
-
-
-
-
+    
         return {"FINISHED"}
 
 
