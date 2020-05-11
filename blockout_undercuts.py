@@ -10,6 +10,85 @@ from mathutils import Vector
 
 #Addon Imports
 
+
+class OPENDENTAL_OT_survey_model(bpy.types.Operator):
+    """Calculates silhouette of object which surveys convexities AND concavities from the current view axis"""
+
+    bl_idname = "opendental.view_silhouette_survey"
+    bl_label = "Survey Model From View"
+    bl_options = {"REGISTER", "UNDO"}
+
+    world = bpy.props.BoolProperty(
+        default=True,
+        name="Use world coordinate for calculation...almost always should be true.",
+    )
+    smooth = bpy.props.BoolProperty(
+        default=True,
+        name="Smooth the outline.  Slightly less acuurate in some situations but more accurate in others.  Default True for best results",
+    )
+
+    @classmethod
+    def poll(cls, context):
+        # restoration exists and is in scene
+        C0 = context.space_data.type == "VIEW_3D"
+        C1 = context.object != None
+        if C1:
+            C2 = context.object.type == "MESH"
+        else:
+            C2 = False
+        return C0 and C1 and C2
+
+    def execute(self, context):
+        settings = get_settings()
+        dbg = settings.debug
+        ob = context.object
+        view = context.space_data.region_3d.view_rotation @ Vector((0, 0, 1))
+        odcutils.silouette_brute_force(
+            context, ob, view, self.world, self.smooth, debug=dbg
+        )
+        return {"FINISHED"}
+
+class OPENDENTAL_OT_blockout_model(bpy.types.Operator):
+    """Calculates silhouette of object which surveys convexities AND concavities from the current view axis"""
+
+    bl_idname = "opendental.view_blockout_undercuts"
+    bl_label = "Blockout Model From View"
+    bl_options = {"REGISTER", "UNDO"}
+
+    world = bpy.props.BoolProperty(
+        default=True,
+        name="Use world coordinate for calculation...almost always should be true.",
+    )
+    smooth = bpy.props.BoolProperty(
+        default=True,
+        name="Smooth the outline.  Slightly less acuurate in some situations but more accurate in others.  Default True for best results",
+    )
+
+    @classmethod
+    def poll(cls, context):
+        # restoration exists and is in scene
+        C0 = context.space_data.type == "VIEW_3D"
+        C1 = context.object != None
+        if C1:
+            C2 = context.object.type == "MESH"
+        else:
+            C2 = False
+        return C0 and C1 and C2
+
+    def execute(self, context):
+        # settings = get_settings()
+        # dbg = settings.debug
+        ob = context.object
+        view = context.space_data.region_3d.view_rotation @ Vector((0, 0, 1))
+
+        Modelsprop = bpy.context.scene.UNDERCUTS_props.Modelsprop
+        if "Preview" in Modelsprop:
+            bmesh_fns.remove_undercuts(context, ob, view, self.world, self.smooth)
+        elif "Solid" in Modelsprop:
+            bpy.ops.opendental.view_blockout_undercuts_solid("INVOKE_DEFAULT")
+        return {"FINISHED"}
+
+
 class OPENDENTAL_OT_blockout_model_solid(bpy.types.Operator): #produces watertight blockout mesh when supplied watertight mesh
     bl_idname = 'opendental.view_blockout_undercuts_solid'
     bl_label = "Blockout Model From Z-axis"
@@ -59,7 +138,6 @@ class OPENDENTAL_OT_blockout_model_solid(bpy.types.Operator): #produces watertig
         
         
         
-
         ###  PATRICKS TEST ###############################
         ##################################################
         world_view = context.space_data.region_3d.view_rotation @ Vector((0,0,1))
@@ -77,20 +155,22 @@ class OPENDENTAL_OT_blockout_model_solid(bpy.types.Operator): #produces watertig
             else:
                 f.select = False
         
-        #bpy.ops.object.mode_set(mode = 'EDIT')
+        bpy.ops.object.mode_set(mode = 'EDIT')
         
-        #bpy.context.scene.transform_orientation_slots[0].type = "LOCAL"
+        bpy.context.scene.transform_orientation_slots[0].type = "LOCAL"
         extrude_vec = extrude_z * local_view
-        #bpy.ops.mesh.extrude_region_move()
-        #bpy.ops.transform.translate(
-        #    value=(extrude_vec[0], extrude_vec[1], extrude_vec[2]), constraint_axis=(False, False, False)
-        #)
+        bpy.ops.mesh.extrude_region_move()
+        bpy.ops.transform.translate(
+            value=(extrude_vec[0], extrude_vec[1], extrude_vec[2]), constraint_axis=(False, False, False)
+        )
+        bpy.context.tool_settings.mesh_select_mode = (True, False, False)
+        bpy.ops.object.mode_set(mode = 'OBJECT')
         
-        #bpy.ops.object.mode_set(mode = 'OBJECT')
-        
-        #return {'FINISHED'}
+        return {'FINISHED'}
         ### END PATRICK"S TEST   #########################
         ###################################################
+        
+
         # duplcate Model and name it Model_undercut :
 
         Model = ob
@@ -202,7 +282,7 @@ class OPENDENTAL_OT_blockout_model_solid(bpy.types.Operator): #produces watertig
         bpy.ops.object.vertex_group_remove(all=False, all_unlocked=False)
         bpy.ops.object.mode_set(mode="OBJECT")
 
-        return {"FINISHED"}
+        #return {"FINISHED"}
     
         print("Extrude DONE")
 
@@ -242,8 +322,12 @@ class OPENDENTAL_OT_blockout_model_solid(bpy.types.Operator): #produces watertig
         return {"FINISHED"}
     
 def register():
+    bpy.utils.register_class(OPENDENTAL_OT_survey_model)
+    bpy.utils.register_class(OPENDENTAL_OT_blockout_model)
     bpy.utils.register_class(OPENDENTAL_OT_blockout_model_solid)
 
     
 def unregister():
+    bpy.utils.unregister_class(OPENDENTAL_OT_survey_model)
+    bpy.utils.unregister_class(OPENDENTAL_OT_blockout_model)
     bpy.utils.unregister_class(OPENDENTAL_OT_blockout_model_solid)
