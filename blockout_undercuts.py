@@ -165,11 +165,12 @@ class OPENDENTAL_OT_blockout_model_solid(bpy.types.Operator): #produces watertig
         )
         bpy.context.tool_settings.mesh_select_mode = (True, False, False)
         bpy.ops.object.mode_set(mode = 'OBJECT')
+        bpy.ops.opendental.remesh_model("INVOKE_DEFAULT")
         
         return {'FINISHED'}
         ### END PATRICK"S TEST   #########################
         ###################################################
-        
+        """
 
         # duplcate Model and name it Model_undercut :
 
@@ -317,9 +318,11 @@ class OPENDENTAL_OT_blockout_model_solid(bpy.types.Operator): #produces watertig
         # Finish ...........................................................
 
         bpy.ops.object.mode_set(mode="OBJECT")
-        bpy.ops.object.select_all(action="DESELECT")
+        bpy.ops.opendental.remesh_model("INVOKE_DEFAULT")
+        #bpy.ops.object.select_all(action="DESELECT")
 
         return {"FINISHED"}
+        """
     
 def register():
     bpy.utils.register_class(OPENDENTAL_OT_survey_model)

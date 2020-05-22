@@ -403,11 +403,24 @@ class VIEW3D_PT_ODCSplints(bpy.types.Panel):
 
         # Draw button
         row = layout.row()
-        row.operator('object.splint_draw', text='draw splint')
+        row.operator("opendental.splint_outline", text="Outline Area")
 
-        # Make Button 
+        if context.scene.splint_mode == "PAINT":
+            # Draw button
+            row = layout.row()
+            row.operator("opendental.splint_outline_paint", text="Add Area")
+            row = layout.row()
+            row.operator("opendental.splint_outline_erase", text="Erase Area")
+
+        col = layout.column(align = True)
+        col.prop(context.scene, "splint_shell_thickness")
+        col.prop(context.scene, "splint_shell_offset")
+
+        layout.prop_search(context.scene, "splint_base_model", context.scene, "objects")
+        
+        # Make Button
         row = layout.row()
-        row.operator('object.splint_make', text='make splint')
+        row.operator("opendental.splint_make", text="Finalize Splint")
 
 
 class VIEW3D_PT_ODCOrtho(bpy.types.Panel):
@@ -576,16 +589,6 @@ class VIEW3D_PT_ODCModels(bpy.types.Panel):
         ).url = "https://github.com/patmo141/odc_public/wiki"
         """
 
-        # Decimate Model Button :
-        row = layout.row()
-        row.operator(
-            "opendental.decimate_model", text="Decimate Model", icon="MOD_DECIM"
-        )
-
-        # Model Remesh Button :
-        row = layout.row()
-        row.operator("opendental.remesh_model", text="Remesh Model", icon="VIEW_ORTHO")
-
         # Clean Model Button :
         row = layout.row()
         row.operator("opendental.clean_model", text="Clean Model", icon="BRUSH_DATA")
@@ -596,6 +599,16 @@ class VIEW3D_PT_ODCModels(bpy.types.Panel):
             "opendental.project_model_base", text="Model Base", icon="FILE_VOLUME"
         )
 
+        # Model Remesh Button :
+        row = layout.row()
+        row.operator("opendental.remesh_model", text="Remesh Model", icon="VIEW_ORTHO")
+
+        # Decimate Model Button :
+        row = layout.row()
+        row.operator(
+            "opendental.decimate_model", text="Decimate Model", icon="MOD_DECIM"
+        )
+
         row = layout.row()
         row.operator("opendental.view_silhouette_survey", text="Survey Model Undercuts")
 
@@ -604,7 +617,7 @@ class VIEW3D_PT_ODCModels(bpy.types.Panel):
         # Modelsprop = props.Modelsprop
         row.prop(props, "Modelsprop", text="Select Algorithm")
         row.operator("opendental.view_blockout_undercuts", text="Create Blockout")
-
+        """
         row = layout.row()
         col = row.column(align=True)
 
@@ -615,6 +628,7 @@ class VIEW3D_PT_ODCModels(bpy.types.Panel):
 
         col.operator("opendental.simple_offset_surface", text="Simple Offset")
         # col.operator("opendental.simple_base", text = "Simple Base")
+        """
 
 
 
@@ -639,6 +653,14 @@ def register():
     bpy.utils.register_class(UNDERCUTS_props)
     # Register UNDERCUTS_props
     bpy.types.Scene.UNDERCUTS_props = bpy.props.PointerProperty(type=UNDERCUTS_props)
+    #register splint mode state var
+    bpy.types.Scene.splint_mode = bpy.props.StringProperty(name="splint_mode", default="OBJECT") #other option is "PAINT" to unhide the add/erase buttons in weight paint mode
+    #register splint thickness input
+    bpy.types.Scene.splint_shell_thickness = bpy.props.StringProperty(name = "Thickness", description = "Set shell thickness in mm.", default = "3.0")
+    #register splint offset input
+    bpy.types.Scene.splint_shell_offset = bpy.props.StringProperty(name = "Offset", description = "Set shell offset from model in mm.", default = "0.5")
+    #register splint base model selection
+    bpy.types.Scene.splint_base_model = bpy.props.StringProperty(name = "Base Model", description = "Set the working dental model.")
 
 
 def unregister():
@@ -659,6 +681,14 @@ def unregister():
     bpy.utils.unregister_class(UNDERCUTS_props)
     # $ delete UNDERCUTS_props  on unregister
     del bpy.types.Scene.UNDERCUTS_props
+    # delete splint mode state var
+    del bpy.types.Scene.splint_mode
+    # delete splint thickness input
+    del bpy.types.Scene.splint_shell_thickness
+    # delete splint offset input
+    del bpy.types.Scene.splint_shell_offset
+    # delete splint base model selection
+    del bpy.types.Scene.splint_base_model
 
 
 if __name__ == "__main__":
