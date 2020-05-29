@@ -9,6 +9,7 @@ from mathutils import Vector
 
 
 #Addon Imports
+import odcutils
 
 
 class OPENDENTAL_OT_survey_model(bpy.types.Operator):
@@ -39,12 +40,12 @@ class OPENDENTAL_OT_survey_model(bpy.types.Operator):
         return C0 and C1 and C2
 
     def execute(self, context):
-        settings = get_settings()
-        dbg = settings.debug
+        #settings = get_settings()
+        #dbg = settings.debug
         ob = context.object
         view = context.space_data.region_3d.view_rotation @ Vector((0, 0, 1))
         odcutils.silouette_brute_force(
-            context, ob, view, self.world, self.smooth, debug=dbg
+            context, ob, view, self.world, self.smooth #, debug=dbg
         )
         return {"FINISHED"}
 

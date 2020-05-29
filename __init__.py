@@ -292,6 +292,9 @@ def register():
     )  # , odcmenus, bgl_utils
 
     # register them
+    panel.register()
+    blockout_undercuts.register()
+    model_ops.register()
     classes.register()
     odcutils.register()
     crown.register()
@@ -303,11 +306,9 @@ def register():
     flexible_tooth.register()
     bracket_placement.register()
     denture_base.register()
-    panel.register()
     occlusion.register()
     ortho.register()
-    blockout_undercuts.register()
-    model_ops.register()
+    
     # odcmenus.register()
     # bgl_utils.register()
 

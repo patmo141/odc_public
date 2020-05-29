@@ -77,6 +77,84 @@ class SCENE_UL_odc_splints(bpy.types.UIList):
             layout.alignment = "CENTER"
             layout.label(text="", icon_value="NODE")
 
+class UNDERCUTS_props(bpy.types.PropertyGroup):
+
+    Models = ["Preview", "Solid"]
+    items = []
+    for i in range(len(Models)):
+        item = (str(Models[i]), str(Models[i]), str(""), int(i))
+        items.append(item)
+
+    Modelsprop: bpy.props.EnumProperty(items=items, description="", default="Solid")
+
+
+class VIEW3D_PT_ODCModels(bpy.types.Panel):
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"  # blender 2.7 and lower = TOOLS
+    bl_category = "Open Dental CAD"
+    bl_label = "Model Operations"
+    bl_context = ""
+
+    def draw(self, context):
+        sce = bpy.context.scene
+        layout = self.layout
+
+        addon_prefs = get_settings()
+
+        """
+        # Title and info icon :
+        row = layout.row()
+        row.label(text="Model Tools")
+        row.operator(
+            "wm.url_open", text="", icon="INFO"
+        ).url = "https://github.com/patmo141/odc_public/wiki"
+        """
+
+        # Clean Model Button :
+        row = layout.row()
+        row.operator("opendental.clean_model", text="Clean Model", icon="BRUSH_DATA")
+
+        # Model Base Button :
+        row = layout.row()
+        row.operator(
+            "opendental.project_model_base", text="Model Base", icon="FILE_VOLUME"
+        )
+
+        # Model Remesh Button :
+        row = layout.row()
+        row.operator("opendental.remesh_model", text="Remesh Model", icon="VIEW_ORTHO")
+
+        # Decimate Model Button :
+        row = layout.row()
+        row.operator(
+            "opendental.decimate_model", text="Decimate Model", icon="MOD_DECIM"
+        )
+
+        row = layout.row()
+        row.operator("opendental.view_silhouette_survey", text="Survey Model Undercuts")
+
+        row = layout.row()
+        props = context.scene.UNDERCUTS_props
+        # Modelsprop = props.Modelsprop
+        row.prop(props, "Modelsprop", text="Select Algorithm")
+        row.operator("opendental.view_blockout_undercuts", text="Create Blockout")
+        """
+        row = layout.row()
+        col = row.column(align=True)
+
+        col.operator("opendental.meta_scaffold_create", text="Decimate Surface")
+        col.operator("opendental.meta_offset_surface", text="Meta Offset Surface")
+        if context.object and context.object.type == "META":
+            col.operator("object.convert", text="Convert Meta Surface to Mesh")
+
+        col.operator("opendental.simple_offset_surface", text="Simple Offset")
+        # col.operator("opendental.simple_base", text = "Simple Base")
+        """
+
+
+
+        # row = layout.row()
+        # row.operator("opendental.view_blockout_undercuts", text = "Blockout Model Undercuts")
 
 class VIEW3D_PT_ODCSettings(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
@@ -262,16 +340,18 @@ class VIEW3D_PT_ODCImplants(bpy.types.Panel):
         row.operator("opendental.stop_help", text="", icon="CANCEL")
 
         row = layout.row()
-        row.label(text="Edentulous Spaces to Fill")
+        row.label(text="Implant List:")
         row = layout.row()
         row.template_list(
             "SCENE_UL_odc_implants", "", sce, "odc_implants", sce, "odc_implant_index"
         )
 
         col = row.column(align=True)
-        col.operator("opendental.add_implant_restoration", text="Add a Space")
-        col.operator("opendental.remove_implant_restoration", text="Remove a Space")
-        col.operator("opendental.plan_restorations", text="Plan Multiple")
+        col.operator("opendental.add_implant_restoration", text="Add Implant")
+        col.operator("opendental.remove_implant_restoration", text="Remove Implant")
+        #col.operator("opendental.plan_restorations", text="Plan Multiple")
+        col.label(text="Implant Library:")
+        col.prop(context.scene.implant_lib_list, "Type")
 
         # if odc.odc_restricted_registration:
         row = layout.row()
@@ -283,18 +363,55 @@ class VIEW3D_PT_ODCImplants(bpy.types.Panel):
         # else:
         # row = layout.row()
         # row.label(text = "Implant library not loaded :-(")
+        #col = layout.column(align = True)
+        #col.prop(context.scene, "splint_shell_thickness")
+        #col.prop(context.scene, "splint_shell_offset")
 
+        row = layout.row()
+        row.label(text="Sleeve Parameters:")
+        row = layout.row()
+        row.prop(context.scene, "sleeve_diameter")
         row = layout.row()
         row.operator("opendental.place_guide_sleeve", text="Place Sleeve")
-
-        row = layout.row()
-        row.operator("opendental.implant_guide_cylinder", text="Place Guide Cylinder")
-
         row = layout.row()
         row.operator(
             "opendental.implant_inner_cylinder", text="Implant Inner Cylinders"
         )
 
+        row = layout.row()
+        row.label(text="Guide Platform Parameters:")
+        row = layout.row()
+        row.prop(context.scene, "platform_diameter")
+        row = layout.row()
+        row.prop(context.scene, "platform_height")
+        row = layout.row()
+        row.prop(context.scene, "platform_offset")
+        row = layout.row()
+        row.operator("opendental.implant_guide_cylinder", text="Place Guide Platform")
+
+        row = layout.row()
+        row.label(text="Splint Operators:")
+        row = layout.row()
+        row.operator("opendental.implant_guide_cylinder", text="Finalize Guide")
+        row = layout.row()
+        row.operator("opendental.implant_guide_cylinder", text="Update Guide")
+
+
+
+class ImplantTypeListProperties(bpy.types.PropertyGroup):
+    mode_options = [
+        ("mesh.primitive_plane_add", "Plane", '', 'MESH_PLANE', 0),
+        ("mesh.primitive_cube_add", "Cube", '', 'MESH_CUBE', 1)
+    ]
+
+    Type : bpy.props.EnumProperty(
+        items=mode_options,
+        description="implant library",
+        default="mesh.primitive_plane_add",
+        update=None #execute_operator
+    )
+def execute_operator(self, context):
+    eval('bpy.ops.' + self.Type + '()')
 
 class VIEW3D_PT_ODCBridges(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
@@ -400,12 +517,14 @@ class VIEW3D_PT_ODCSplints(bpy.types.Panel):
 
         # New row
         row = layout.row()
-
-        # Draw button
-        row = layout.row()
-        row.operator("opendental.splint_outline", text="Outline Area")
-
+        if context.scene.splint_mode == "OBJECT":
+            # Draw button
+            row = layout.row()
+            row.operator("opendental.splint_outline", text="Outline Area")
         if context.scene.splint_mode == "PAINT":
+            # Draw button
+            row = layout.row()
+            row.operator("opendental.splint_outline", text="Exit Outline")
             # Draw button
             row = layout.row()
             row.operator("opendental.splint_outline_paint", text="Add Area")
@@ -556,89 +675,25 @@ class VIEW3D_PT_ODCDentures(bpy.types.Panel):
         )
 
 
-class UNDERCUTS_props(bpy.types.PropertyGroup):
-
-    Models = ["Preview", "Solid"]
-    items = []
-    for i in range(len(Models)):
-        item = (str(Models[i]), str(Models[i]), str(""), int(i))
-        items.append(item)
-
-    Modelsprop: bpy.props.EnumProperty(items=items, description="", default="Solid")
-
-
-class VIEW3D_PT_ODCModels(bpy.types.Panel):
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "UI"  # blender 2.7 and lower = TOOLS
-    bl_category = "Open Dental CAD"
-    bl_label = "Model Operations"
-    bl_context = ""
-
-    def draw(self, context):
-        sce = bpy.context.scene
-        layout = self.layout
-
-        addon_prefs = get_settings()
-
-        """
-        # Title and info icon :
-        row = layout.row()
-        row.label(text="Model Tools")
-        row.operator(
-            "wm.url_open", text="", icon="INFO"
-        ).url = "https://github.com/patmo141/odc_public/wiki"
-        """
-
-        # Clean Model Button :
-        row = layout.row()
-        row.operator("opendental.clean_model", text="Clean Model", icon="BRUSH_DATA")
-
-        # Model Base Button :
-        row = layout.row()
-        row.operator(
-            "opendental.project_model_base", text="Model Base", icon="FILE_VOLUME"
-        )
-
-        # Model Remesh Button :
-        row = layout.row()
-        row.operator("opendental.remesh_model", text="Remesh Model", icon="VIEW_ORTHO")
-
-        # Decimate Model Button :
-        row = layout.row()
-        row.operator(
-            "opendental.decimate_model", text="Decimate Model", icon="MOD_DECIM"
-        )
-
-        row = layout.row()
-        row.operator("opendental.view_silhouette_survey", text="Survey Model Undercuts")
-
-        row = layout.row()
-        props = context.scene.UNDERCUTS_props
-        # Modelsprop = props.Modelsprop
-        row.prop(props, "Modelsprop", text="Select Algorithm")
-        row.operator("opendental.view_blockout_undercuts", text="Create Blockout")
-        """
-        row = layout.row()
-        col = row.column(align=True)
-
-        col.operator("opendental.meta_scaffold_create", text="Decimate Surface")
-        col.operator("opendental.meta_offset_surface", text="Meta Offset Surface")
-        if context.object and context.object.type == "META":
-            col.operator("object.convert", text="Convert Meta Surface to Mesh")
-
-        col.operator("opendental.simple_offset_surface", text="Simple Offset")
-        # col.operator("opendental.simple_base", text = "Simple Base")
-        """
-
-
-
-        # row = layout.row()
-        # row.operator("opendental.view_blockout_undercuts", text = "Blockout Model Undercuts")
 
 
 def register():
+    bpy.utils.register_class(VIEW3D_PT_ODCModels)
     bpy.utils.register_class(SCENE_UL_odc_teeth)
+
+
     bpy.utils.register_class(SCENE_UL_odc_implants)
+    #implant library list
+    bpy.utils.register_class(ImplantTypeListProperties)
+    bpy.types.Scene.implant_lib_list = bpy.props.PointerProperty(type=ImplantTypeListProperties)
+    #implant sleeve diameter
+    bpy.types.Scene.sleeve_diameter = bpy.props.StringProperty(name = "Diameter", description = "Set implant/sleeve diameter.", default = "")
+    #bpy.types.Scene.sleeve_height = bpy.props.StringProperty(name = "Height", description = "Set implant/sleeve diameter.", default = "")
+    #implant splint/guide platform diameter and offset
+    bpy.types.Scene.platform_diameter = bpy.props.StringProperty(name = "Diameter", description = "Set shell thickness in mm.", default = "")
+    bpy.types.Scene.platform_height = bpy.props.StringProperty(name = "Height", description = "Set implant/sleeve diameter.", default = "")
+    bpy.types.Scene.platform_offset = bpy.props.StringProperty(name = "Offset", description = "Set shell thickness in mm.", default = "")
+
     bpy.utils.register_class(SCENE_UL_odc_bridges)
     bpy.utils.register_class(SCENE_UL_odc_splints)
     bpy.utils.register_class(VIEW3D_PT_ODCSettings)
@@ -648,7 +703,7 @@ def register():
     bpy.utils.register_class(VIEW3D_PT_ODCSplints)
     bpy.utils.register_class(VIEW3D_PT_ODCOrtho)
     bpy.utils.register_class(VIEW3D_PT_ODCDentures)
-    bpy.utils.register_class(VIEW3D_PT_ODCModels)
+
     # bpy.utils.register_module(__name__)
     bpy.utils.register_class(UNDERCUTS_props)
     # Register UNDERCUTS_props
@@ -664,8 +719,19 @@ def register():
 
 
 def unregister():
+    bpy.utils.unregister_class(VIEW3D_PT_ODCModels)
     bpy.utils.unregister_class(SCENE_UL_odc_teeth)
     bpy.utils.unregister_class(SCENE_UL_odc_implants)
+    #implant library list
+    del bpy.types.Scene.implant_lib_list
+    bpy.utils.unregister_class(ImplantTypeListProperties)
+    #implant sleeve diameter
+    del bpy.types.Scene.sleeve_diameter
+    #implant splint/guide platform diameter and height
+    del bpy.types.Scene.platform_diameter
+    del bpy.types.Scene.platform_height
+    del bpy.types.Scene.platform_offset
+
     bpy.utils.unregister_class(SCENE_UL_odc_bridges)
     bpy.utils.unregister_class(SCENE_UL_odc_splints)
     bpy.utils.unregister_class(VIEW3D_PT_ODCTeeth)
@@ -676,7 +742,7 @@ def unregister():
     bpy.utils.unregister_class(VIEW3D_PT_ODCSplints)
     bpy.utils.unregister_class(VIEW3D_PT_ODCOrtho)
     bpy.utils.unregister_class(VIEW3D_PT_ODCDentures)
-    bpy.utils.unregister_class(VIEW3D_PT_ODCModels)
+    
 
     bpy.utils.unregister_class(UNDERCUTS_props)
     # $ delete UNDERCUTS_props  on unregister
