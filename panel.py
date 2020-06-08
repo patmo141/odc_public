@@ -132,6 +132,8 @@ class VIEW3D_PT_ODCModels(bpy.types.Panel):
         ).url = "https://github.com/patmo141/odc_public/wiki"
         """
 
+        
+
         # Clean Model Button :
         row = layout.row()
         row.operator("opendental.clean_model", text="Clean Model", icon="BRUSH_DATA")

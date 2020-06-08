@@ -288,10 +288,12 @@ def register():
         denture_base,
         occlusion,
         ortho,
+        trim_tool,
         model_ops,
     )  # , odcmenus, bgl_utils
 
     # register them
+    trim_tool.register()
     panel.register()
     blockout_undercuts.register()
     model_ops.register()
@@ -353,6 +355,7 @@ def unregister():
         flexible_tooth,
         blockout_undercuts,
         model_ops,
+        trim_tool,
     )  # , splint, panel, odcmenus, bgl_utils
 
     bpy.app.handlers.save_pre.remove(save_pre_method)
@@ -375,6 +378,7 @@ def unregister():
     flexible_tooth.unregister()
     blockout_undercuts.unregister()
     model_ops.unregister()
+    trim_tool.unregister()
 
     # odcmenus.unregister()
     # bgl_utils.unregister()
