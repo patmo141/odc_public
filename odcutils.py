@@ -2519,7 +2519,7 @@ def silouette_brute_force(context, ob, view, world = True, smooth = True, debug 
     
     if debug:
         print("finished in %f seconds" % (time.time() - start))
-    
+    obj.select_set(state=False)
     return
 
     '''

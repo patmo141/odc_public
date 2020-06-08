@@ -71,8 +71,10 @@ class OPENDENTAL_OT_clean_model(bpy.types.Operator):
 
         else:
 
-            Fill_treshold = 400
-            # get model to clean :
+            #start = time.perf_counter()
+            Fill_treshold = 500
+            
+            ####### Get model to clean ####### 
 
             Model = bpy.context.view_layer.objects.active
             Model_name = Model.name
@@ -80,46 +82,32 @@ class OPENDENTAL_OT_clean_model(bpy.types.Operator):
             Model.select_set(True)
             bpy.ops.object.mode_set(mode="EDIT")
             bpy.context.tool_settings.mesh_select_mode = (True, False, False)
+            
+            #t1 = time.perf_counter()
+            #print(f"step 1 Done in {t1-start}")
 
-            ##### 1st step #########
-
-            bpy.ops.mesh.select_all(action="SELECT")
-            bpy.ops.mesh.tris_convert_to_quads(shape_threshold=1.0472, sharp=True)
-            bpy.ops.mesh.select_all(action="DESELECT")
-            bpy.ops.mesh.select_non_manifold()
-            bpy.ops.mesh.select_more()
-            bpy.ops.mesh.select_more()
-            bpy.ops.mesh.remove_doubles(threshold=0.16)
-            bpy.ops.mesh.select_less()
-            bpy.ops.mesh.select_less()
-            bpy.ops.mesh.select_less()
-            bpy.ops.mesh.delete(type="FACE")
-            bpy.ops.mesh.select_non_manifold()
-            bpy.ops.mesh.select_less()
-            bpy.ops.mesh.delete(type="VERT")
-
-            ##### 2nd step : Fill Holes #########
-
+            ####### Clean borders #######
+            
             bpy.ops.mesh.select_all(action="DESELECT")
             bpy.ops.mesh.select_non_manifold()
             bpy.ops.mesh.fill_holes(sides=Fill_treshold)
-
-            ##### 3rd step : Remove weird boders : ######
-
+            bpy.ops.mesh.quads_convert_to_tris(quad_method='BEAUTY', ngon_method='BEAUTY')
+            
             bpy.ops.mesh.select_all(action="DESELECT")
             bpy.ops.mesh.select_non_manifold()
-
-            bpy.ops.mesh.select_more()
-            bpy.ops.mesh.select_more()
             bpy.ops.mesh.select_more()
             bpy.ops.mesh.select_less()
+            bpy.ops.mesh.delete(type='FACE')
+            
+            bpy.ops.mesh.select_non_manifold()
             bpy.ops.mesh.select_less()
-            bpy.ops.mesh.select_less()
-            bpy.ops.mesh.select_less()
+            bpy.ops.mesh.delete(type="VERT")
+            
+            #t2 = time.perf_counter()
+            #print(f"step 2 Done in {t2-t1}")
 
-            bpy.ops.mesh.delete(type="FACE")
-            ###............5th step Remove separated parts : ............###
-
+            ####### Remove loose geometry #######
+            
             # Separate parts :
 
             bpy.ops.mesh.select_all(action="SELECT")
@@ -141,92 +129,304 @@ class OPENDENTAL_OT_clean_model(bpy.types.Operator):
                     obj.select_set(False)
 
             # Delete small parts :
-
+            
             bpy.ops.object.delete(use_global=False, confirm=False)
             Model = bpy.data.objects[Model_name]
             Model.select_set(True)
+            
+            #t3 = time.perf_counter()
+            #print(f"step 3 Done in {t3-t2}")
 
-            ###### 4th step : space up and smooth borders : ##############
-            """
-            # Give it some space :
+            ####### Fill Holes #######
 
-            bpy.ops.mesh.select_all(action="DESELECT")
-            bpy.ops.mesh.select_non_manifold()
-
-            bpy.ops.mesh.select_more()
-            bpy.ops.mesh.select_more()
-
-            bpy.ops.mesh.remove_doubles(threshold=0.2)
-            """
-            # Smooth mesh borders and Select Non-Manifold :
             bpy.ops.object.mode_set(mode="EDIT")
-            bpy.context.tool_settings.mesh_select_mode = (True, False, False)
-
             bpy.ops.mesh.select_all(action="DESELECT")
             bpy.ops.mesh.select_non_manifold()
+            bpy.ops.mesh.fill_holes(sides=Fill_treshold)
+            bpy.ops.mesh.quads_convert_to_tris(quad_method='BEAUTY', ngon_method='BEAUTY')
 
-            bpy.ops.mesh.select_more()
-            bpy.ops.mesh.select_more()
-            bpy.ops.mesh.select_more()
+            #t4 = time.perf_counter()
+            #print(f"step 4 Done in {t4-t3}")
 
-            bpy.ops.mesh.delete(type="FACE")
-  
-            bpy.ops.mesh.select_all(action="SELECT")
-            bpy.ops.mesh.delete_loose(use_verts=True, use_edges=True, use_faces=False)
-
+            ####### Relax borders #######
+            
+            bpy.ops.object.mode_set(mode="EDIT")
             bpy.ops.mesh.select_all(action="DESELECT")
             bpy.ops.mesh.select_non_manifold()
-
-            bpy.ops.mesh.select_more()
-            bpy.ops.mesh.select_more()
-            bpy.ops.mesh.vertices_smooth(factor=0.5)
-
-            bpy.ops.mesh.remove_doubles(threshold=0.2)
-
-            bpy.ops.mesh.select_all(action="DESELECT")
-            bpy.ops.mesh.select_non_manifold()
-
-            bpy.ops.mesh.delete(type="FACE")
-
-            bpy.ops.mesh.select_all(action="DESELECT")
-            bpy.ops.mesh.select_non_manifold()
-
             bpy.ops.mesh.looptools_relax(
-                input="selected", interpolation="cubic", iterations="10", regular=True
+                input="selected", interpolation="cubic", iterations="3", regular=True
             )
-            bpy.ops.mesh.select_all(action="SELECT")
-            bpy.ops.mesh.delete_loose()
 
-            # Repair geometry resuting from precedent operation :
+            #t5 = time.perf_counter()
+            #print(f"step 5 Done in {t5-t4}")
 
-            bpy.ops.mesh.select_all(action="DESELECT")
-            bpy.ops.mesh.select_non_manifold()
-            bpy.ops.mesh.select_more()
-            bpy.ops.mesh.select_more()
-            bpy.ops.mesh.remove_doubles(threshold=0.1)
 
-            # Repair geometry resuting from precedent operation :
-
-            bpy.ops.mesh.select_all(action="DESELECT")
-            bpy.ops.mesh.select_non_manifold()
-            bpy.ops.mesh.select_less()
-            bpy.ops.mesh.delete(type="VERT")
-
-            # Make mesh consistent (face normals) :
-
+            ####### Make mesh consistent (face normals) #######
+            
+            bpy.ops.object.mode_set(mode="EDIT")
             bpy.ops.mesh.select_all(action="SELECT")
             bpy.ops.mesh.normals_make_consistent(inside=False)
+            bpy.ops.mesh.select_all(action="DESELECT")
             bpy.ops.object.mode_set(mode="OBJECT")
 
-            print("Clean Model Done")
+            #t6 = time.perf_counter()
+            #print(f"step 6 Done in {t6-t5}")
 
+            #finish = time.perf_counter()
+            #print(f"Clean Model Done in {finish-start}")
+            
             return {"FINISHED"}
 
 
-class OPENDENTAL_OT_project_model_base(bpy.types.Operator):
+class OPENDENTAL_OT_model_base_type_select(bpy.types.Operator):
+    """"""
+
+    bl_idname = "opendental.model_base_type_select"
+    bl_label = "Select model base type operator."
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        Modelsprop = bpy.context.scene.BASE_props.Modelsprop
+        if "Solid" in Modelsprop:
+            bpy.ops.opendental.solid_model_base("INVOKE_DEFAULT")
+        elif "Hollow" in Modelsprop:
+            bpy.ops.opendental.hollow_model_base("INVOKE_DEFAULT")
+        return {"FINISHED"}
+
+class OPENDENTAL_OT_hollow_model_base(bpy.types.Operator):
+    """Make a hollow model base from top user view prspective"""
+
+    bl_idname = "opendental.hollow_model_base"
+    bl_label = "Create a hollow base and remesh model to solid."
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+
+        if bpy.context.selected_objects == []:
+
+            message = " Please select Model !"
+            ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+
+        else:
+            
+            # Get area and space "VIEW_3D" :
+
+            for area in bpy.context.screen.areas:
+                if area.type == "VIEW_3D":
+                    my_area = area
+
+            for space in my_area.spaces:
+                if space.type == "VIEW_3D":
+                    my_space = space
+
+            # Context override: (Need it Only if we run this script in text editor)
+
+            context = bpy.context.copy()
+            context["area"] = my_area
+            context["space_data"] = my_space
+
+            #start = time.perf_counter()
+
+            # Prepare scene settings :
+
+            bpy.ops.view3d.snap_cursor_to_center(context)
+            bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
+            bpy.ops.transform.select_orientation(context, orientation="GLOBAL")
+            bpy.context.scene.tool_settings.transform_pivot_point = 'INDIVIDUAL_ORIGINS'
+
+            bpy.context.scene.tool_settings.use_snap = False
+            bpy.context.scene.tool_settings.use_proportional_edit_objects = False
+            bpy.ops.object.mode_set(mode="OBJECT")
+
+
+            ####### Duplicate Model #######
+
+            # Get active Object :
+
+            Model = bpy.context.view_layer.objects.active
+
+            # Duplicate Model :
+
+            bpy.ops.object.select_all(action="DESELECT")
+            Model.select_set(True)
+            bpy.context.view_layer.objects.active = Model
+            bpy.ops.object.duplicate_move()
+
+            # Rename Model_hollow....
+
+            Model_hollow = bpy.context.view_layer.objects.active
+            Model_hollow.name = f"{Model.name}_hollow"
+            mesh_hollow = Model_hollow.data
+            mesh_hollow.name = f"{Model.name}_hollow_mesh"
+
+            # Get Model_hollow :
+
+            bpy.ops.object.select_all(action="DESELECT")
+            Model_hollow.select_set(True)
+            bpy.context.view_layer.objects.active = Model_hollow
+
+            # store model hollow location :
+
+            bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
+            hollow_location = Model_hollow.location.copy()
+
+            # center model new model hollow to world origin :
+
+            bpy.ops.view3d.snap_selected_to_cursor(context, use_offset=False) 
+
+
+
+            ####### Flip Model_hollow to top view #######
+            view_rotation = my_space.region_3d.view_rotation
+            view3d_rot_matrix = view_rotation.to_matrix().to_4x4()
+
+            flip_matrix = view3d_rot_matrix.inverted()
+            unflip_matrix = view3d_rot_matrix
+
+            Model_hollow.matrix_world = flip_matrix @ Model_hollow.matrix_world
+            
+            # Make duplicate :
+            bpy.ops.object.mode_set(mode="OBJECT")
+
+            bpy.ops.object.select_all(action="DESELECT")
+            Model_hollow.select_set(True)
+            bpy.context.view_layer.objects.active = Model_hollow
+            bpy.ops.object.duplicate_move()
+
+            # get model hollow dup_1 and Make vertex groups :
+
+            dup_1 = bpy.context.view_layer.objects.active
+            dup_1.name = 'hollow dup_1'
+            bpy.ops.object.select_all(action="DESELECT")
+            dup_1.select_set(True)
+            bpy.context.view_layer.objects.active = dup_1
+
+            # remesh dup_1 1mm :
+
+            bpy.context.object.data.use_remesh_smooth_normals = True
+            bpy.context.object.data.use_remesh_preserve_volume = True
+            bpy.context.object.data.use_remesh_fix_poles = True
+            bpy.context.object.data.remesh_voxel_size = 1
+            bpy.ops.object.voxel_remesh()
+
+            #t1 = time.perf_counter()
+            #print(f"before modifiers Done in {t1-start}")
+            
+            # modifiers :
+            bpy.ops.object.mode_set(mode="OBJECT")
+            bpy.ops.object.select_all(action="DESELECT")
+            dup_1.select_set(True)
+            bpy.context.view_layer.objects.active = dup_1
+
+            # Remesh modifier :
+
+            bpy.ops.object.modifier_add(type='REMESH')
+
+            bpy.context.object.modifiers["Remesh"].octree_depth = 6
+            bpy.context.object.modifiers["Remesh"].mode = 'SMOOTH'
+            bpy.context.object.modifiers["Remesh"].scale = 0.6
+            bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Remesh")
+
+            #smooth modifier :
+
+            bpy.ops.object.modifier_add(type='SMOOTH')
+            bpy.context.object.modifiers["Smooth"].iterations = 200
+            bpy.context.object.modifiers["Smooth"].factor = 1
+
+
+            # subdiv modifier :
+
+            bpy.ops.object.modifier_add(type='SUBSURF')
+            bpy.context.object.modifiers["Subdivision"].levels = 3
+
+
+            # Shrinkwrap modifier :
+
+            bpy.ops.object.modifier_add(type='SHRINKWRAP')
+
+            bpy.context.object.modifiers["Shrinkwrap"].target = Model_hollow
+            bpy.context.object.modifiers["Shrinkwrap"].wrap_method = 'NEAREST_SURFACEPOINT'
+            bpy.context.object.modifiers["Shrinkwrap"].wrap_mode = 'ABOVE_SURFACE'
+            bpy.context.object.modifiers["Shrinkwrap"].offset = -2.8
+
+
+            # Corrective smooth modifier :
+
+            bpy.ops.object.modifier_add(type='CORRECTIVE_SMOOTH')
+            bpy.context.object.modifiers["CorrectiveSmooth"].iterations = 100
+            bpy.context.object.modifiers["CorrectiveSmooth"].use_only_smooth = True
+            bpy.context.object.modifiers["CorrectiveSmooth"].factor = 1
+
+
+            #apply modifiers :
+
+            bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Smooth")
+
+
+            bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Subdivision")
+            bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Shrinkwrap")
+            bpy.ops.object.modifier_apply(apply_as='DATA', modifier="CorrectiveSmooth") 
+
+
+            # remesh dup_1 1mm :
+
+            bpy.context.object.data.use_remesh_smooth_normals = True
+            bpy.context.object.data.use_remesh_preserve_volume = True
+            bpy.context.object.data.use_remesh_fix_poles = True
+            bpy.context.object.data.remesh_voxel_size = 0.1
+            bpy.ops.object.voxel_remesh()
+
+            #t2 = time.perf_counter()
+            #print(f"modifiers Done in {t2-t1}")
+
+
+            # join the 2 meshes :
+
+            bpy.ops.object.mode_set(mode="OBJECT")
+            Model_hollow.select_set(True)
+            bpy.context.view_layer.objects.active = Model_hollow
+            bpy.ops.object.join()
+            Model_hollow = bpy.context.view_layer.objects.active
+            Model_hollow.name = f"{Model.name}_hollow"
+            mesh_hollow = Model_hollow.data
+            mesh_hollow.name = f"{Model.name}_hollow_mesh"
+
+            bpy.ops.object.mode_set(mode="EDIT")
+            bpy.ops.mesh.select_all(action='SELECT')
+            bpy.ops.mesh.bisect(plane_co=(0, 0, -6), plane_no=(0, 0, 1), use_fill=True, clear_inner=True, xstart=100, xend=1600, ystart=400, yend=400)
+            bpy.ops.object.mode_set(mode="OBJECT")
+
+
+            # Model_base matrix_world reset :
+
+            Model_hollow.matrix_world = unflip_matrix @ Model_hollow.matrix_world
+
+            # Restore new Model hollow location :
+
+            Model_hollow.location = hollow_location
+            bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='MEDIAN')
+
+            """
+            # Hide everything but hollow model :
+
+            bpy.ops.object.select_all(action="DESELECT")
+            Model_hollow.select_set(True)
+            bpy.context.view_layer.objects.active = Model_hollow
+
+            bpy.ops.object.shade_flat()
+
+            bpy.ops.object.hide_view_set(context,unselected=True)
+
+            finish = time.perf_counter()
+            print(f"total time Done in {finish-start}")
+            """
+            
+        return {"FINISHED"}
+
+class OPENDENTAL_OT_solid_model_base(bpy.types.Operator):
     """Make a model base from top user view prspective"""
 
-    bl_idname = "opendental.project_model_base"
+    bl_idname = "opendental.solid_model_base"
     bl_label = "Create a base and remesh model to solid."
     bl_options = {"REGISTER", "UNDO"}
 
@@ -389,12 +589,16 @@ class OPENDENTAL_OT_remesh_model(bpy.types.Operator):
 def register():
     bpy.utils.register_class(OPENDENTAL_OT_decimate_model)
     bpy.utils.register_class(OPENDENTAL_OT_clean_model)
-    bpy.utils.register_class(OPENDENTAL_OT_project_model_base)
+    bpy.utils.register_class(OPENDENTAL_OT_model_base_type_select)
+    bpy.utils.register_class(OPENDENTAL_OT_solid_model_base)
     bpy.utils.register_class(OPENDENTAL_OT_remesh_model)
+    bpy.utils.register_class(OPENDENTAL_OT_hollow_model_base)
 
     
 def unregister():
     bpy.utils.unregister_class(OPENDENTAL_OT_decimate_model)
     bpy.utils.unregister_class(OPENDENTAL_OT_clean_model)
-    bpy.utils.unregister_class(OPENDENTAL_OT_project_model_base)
+    bpy.utils.unregister_class(OPENDENTAL_OT_model_base_type_select)
+    bpy.utils.unregister_class(OPENDENTAL_OT_solid_model_base)
     bpy.utils.unregister_class(OPENDENTAL_OT_remesh_model)
+    bpy.utils.unregister_class(OPENDENTAL_OT_hollow_model_base)

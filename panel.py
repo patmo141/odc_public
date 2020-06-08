@@ -87,6 +87,28 @@ class UNDERCUTS_props(bpy.types.PropertyGroup):
 
     Modelsprop: bpy.props.EnumProperty(items=items, description="", default="Solid")
 
+class BASE_props(bpy.types.PropertyGroup):
+
+    Models = ["Solid", "Hollow"]
+    items = []
+    for i in range(len(Models)):
+        item = (str(Models[i]), str(Models[i]), str(""), int(i))
+        items.append(item)
+
+    Modelsprop: bpy.props.EnumProperty(items=items, description="", default="Solid")
+
+class UNDERCUTS_view_props(bpy.types.PropertyGroup):
+
+    colors = ["No color selected", "Violet", "Blue", "Pink", "Green"]
+    items = []
+    for i in range(len(colors)):
+        item = (str(colors[i]), str(colors[i]), str(""), int(i))
+        items.append(item)
+
+    colorprop: bpy.props.EnumProperty(items=items, description="", default="No color selected")
+
+    survey_quaternion : bpy.props.FloatVectorProperty(name="survey_q", description="stors the surveing quaternion rotation", size=4, subtype='QUATERNION')
+
 
 class VIEW3D_PT_ODCModels(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
@@ -114,12 +136,16 @@ class VIEW3D_PT_ODCModels(bpy.types.Panel):
         row = layout.row()
         row.operator("opendental.clean_model", text="Clean Model", icon="BRUSH_DATA")
 
+        layout.row().separator()
         # Model Base Button :
         row = layout.row()
+        props = context.scene.BASE_props
+        row.prop(props, "Modelsprop", text="Type")
         row.operator(
-            "opendental.project_model_base", text="Model Base", icon="FILE_VOLUME"
+            "opendental.model_base_type_select", text="Model Base"
         )
 
+        layout.row().separator()
         # Model Remesh Button :
         row = layout.row()
         row.operator("opendental.remesh_model", text="Remesh Model", icon="VIEW_ORTHO")
@@ -129,8 +155,11 @@ class VIEW3D_PT_ODCModels(bpy.types.Panel):
         row.operator(
             "opendental.decimate_model", text="Decimate Model", icon="MOD_DECIM"
         )
-
-        row = layout.row()
+        layout.row().separator()
+        layout.label(text="Survey undercut color:")
+        row = layout.row(align=True)
+        props = context.scene.UNDERCUTS_view_props
+        row.prop(props, "colorprop", text="")
         row.operator("opendental.view_silhouette_survey", text="Survey Model Undercuts")
 
         row = layout.row()
@@ -687,12 +716,12 @@ def register():
     bpy.utils.register_class(ImplantTypeListProperties)
     bpy.types.Scene.implant_lib_list = bpy.props.PointerProperty(type=ImplantTypeListProperties)
     #implant sleeve diameter
-    bpy.types.Scene.sleeve_diameter = bpy.props.StringProperty(name = "Diameter", description = "Set implant/sleeve diameter.", default = "")
+    bpy.types.Scene.sleeve_diameter = bpy.props.StringProperty(name = "Diameter", description = "Set implant/sleeve diameter (mm).", default = "")
     #bpy.types.Scene.sleeve_height = bpy.props.StringProperty(name = "Height", description = "Set implant/sleeve diameter.", default = "")
     #implant splint/guide platform diameter and offset
-    bpy.types.Scene.platform_diameter = bpy.props.StringProperty(name = "Diameter", description = "Set shell thickness in mm.", default = "")
-    bpy.types.Scene.platform_height = bpy.props.StringProperty(name = "Height", description = "Set implant/sleeve diameter.", default = "")
-    bpy.types.Scene.platform_offset = bpy.props.StringProperty(name = "Offset", description = "Set shell thickness in mm.", default = "")
+    bpy.types.Scene.platform_diameter = bpy.props.StringProperty(name = "Diameter", description = "Set guide platform diameter (mm).", default = "")
+    bpy.types.Scene.platform_height = bpy.props.StringProperty(name = "Height", description = "Set guide platform height (mm).", default = "")
+    bpy.types.Scene.platform_offset = bpy.props.StringProperty(name = "Offset", description = "Set guide platform offset (mm).", default = "")
 
     bpy.utils.register_class(SCENE_UL_odc_bridges)
     bpy.utils.register_class(SCENE_UL_odc_splints)
@@ -708,6 +737,9 @@ def register():
     bpy.utils.register_class(UNDERCUTS_props)
     # Register UNDERCUTS_props
     bpy.types.Scene.UNDERCUTS_props = bpy.props.PointerProperty(type=UNDERCUTS_props)
+    # Register model base props
+    bpy.utils.register_class(BASE_props)
+    bpy.types.Scene.BASE_props = bpy.props.PointerProperty(type=BASE_props)
     #register splint mode state var
     bpy.types.Scene.splint_mode = bpy.props.StringProperty(name="splint_mode", default="OBJECT") #other option is "PAINT" to unhide the add/erase buttons in weight paint mode
     #register splint thickness input
@@ -717,6 +749,13 @@ def register():
     #register splint base model selection
     bpy.types.Scene.splint_base_model = bpy.props.StringProperty(name = "Base Model", description = "Set the working dental model.")
 
+    bpy.utils.register_class(UNDERCUTS_view_props)
+    # Register UNDERCUTS_props
+    bpy.types.Scene.UNDERCUTS_view_props = bpy.props.PointerProperty(
+        type=UNDERCUTS_view_props
+    )
+
+    bpy.types.Scene.pre_surveyed = bpy.props.BoolProperty(name="bool_pre_survey", description="A bool property", default = False)
 
 def unregister():
     bpy.utils.unregister_class(VIEW3D_PT_ODCModels)
@@ -727,7 +766,7 @@ def unregister():
     bpy.utils.unregister_class(ImplantTypeListProperties)
     #implant sleeve diameter
     del bpy.types.Scene.sleeve_diameter
-    #implant splint/guide platform diameter and height
+    #implant splint/guide platform diameter, height, offset
     del bpy.types.Scene.platform_diameter
     del bpy.types.Scene.platform_height
     del bpy.types.Scene.platform_offset
@@ -745,8 +784,10 @@ def unregister():
     
 
     bpy.utils.unregister_class(UNDERCUTS_props)
-    # $ delete UNDERCUTS_props  on unregister
+    # delete UNDERCUTS_props  on unregister
     del bpy.types.Scene.UNDERCUTS_props
+    # delete model base props
+    del bpy.types.Scene.BASE_props
     # delete splint mode state var
     del bpy.types.Scene.splint_mode
     # delete splint thickness input
@@ -755,6 +796,12 @@ def unregister():
     del bpy.types.Scene.splint_shell_offset
     # delete splint base model selection
     del bpy.types.Scene.splint_base_model
+
+    bpy.utils.unregister_class(UNDERCUTS_view_props)
+    # $ delete UNDERCUTS_props  on unregister
+    del bpy.types.Scene.UNDERCUTS_view_props
+
+    del bpy.types.Scene.pre_surveyed
 
 
 if __name__ == "__main__":
