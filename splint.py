@@ -1,37 +1,161 @@
 import bpy
 import bmesh
 from bpy.types import Panel
+
 #from time import process_time
-
-
 def create_material(name):
     if name in bpy.data.materials:  # if material already exists, just configure it
         ob = bpy.context.object
         me = ob.data
         print("Material already exists: " + name + "; changing...")
+
         index = bpy.data.materials.find(name)
         mat = bpy.data.materials[index]
         mat.diffuse_color = (0.295508, 0.439708, 0.8, 0.5)
         mat.metallic = 1
         mat.roughness = 0.02
 
+
         if (
             len(ob.material_slots) < 1
         ):  # check if the material slot already exists and use it
+
             me.materials.append(mat)
         else:
             bpy.ops.object.material_slot_remove()
             me.materials.append(mat)
 
-    else:  # Repeat in case material doesnt exist, bue creating it first
+    else: #Repeat in case material doesnt exist, bue creating it first
         ob = bpy.context.object
-        me = ob.data
+        me = ob.data        
         if len(ob.material_slots) < 1:
             mat = bpy.data.materials.new(name=name)
             mat.diffuse_color = (0.295508, 0.439708, 0.8, 0.5)
             mat.metallic = 1
             mat.roughness = 0.02
             me.materials.append(mat)
+
+        else:
+            bpy.ops.object.material_slot_remove()
+            mat = bpy.data.materials.new(name=name)
+            mat.diffuse_color = (0.295508, 0.439708, 0.8, 0.5)
+            mat.metallic = 1
+            mat.roughness = 0.02
+            print("color " + name+" was created")
+            me.materials.append(mat)
+
+            
+
+def create_particles(name, vertexgroup): #Same process as with material but with a particle system, a bit more complicated
+    if name in bpy.context.object.particle_systems:
+        ob = bpy.context.object
+        me = ob.data
+        print("Particles system already exists: "+ name+ "; changing...")
+        index = bpy.context.object.particle_systems.find(name)
+        part = bpy.data.particles[index]
+        part.type = 'HAIR'
+        part.use_advanced_hair = True
+        part.render_type = 'OBJECT'
+        bpy.context.object.particle_systems[name].vertex_group_density = vertexgroup
+        part.particle_size = 0.2
+        part.count = 10000
+        part.hair_length = 6
+
+    else:
+        ob = bpy.context.object
+        me = ob.data   
+        bpy.ops.object.particle_system_add()
+        bpy.context.object.particle_systems[0].name = name
+
+        findparticles = name in bpy.data.particles
+        finddefaultp = 'ParticleSettings' in bpy.data.particles
+
+        if findparticles == True:
+            part = bpy.data.particles[index]
+            part.name = name
+            part.type = 'HAIR'
+            part.use_advanced_hair = True
+            part.render_type = 'OBJECT'
+            bpy.context.object.particle_systems[name].vertex_group_density = vertexgroup
+            part.particle_size = 0.2
+            part.count = 10000
+            part.hair_length = 6
+            me.particles.append(part)
+        else:
+            if finddefaultp == True:
+                part = bpy.data.particles[0]
+                part.name = name
+                part.type = 'HAIR'
+                part.use_advanced_hair = True
+                part.render_type = 'OBJECT'
+                bpy.context.object.particle_systems[name].vertex_group_density = vertexgroup
+                part.particle_size = 0.2
+                part.count = 10000
+                part.hair_length = 6
+
+            else:
+
+                part = bpy.data.particles.new(name=name)
+                part.name = name
+                part.type = 'HAIR'
+                part.use_advanced_hair = True
+                part.render_type = 'OBJECT'
+                bpy.context.object.particle_systems[name].vertex_group_density = vertexgroup
+                part.particle_size = 0.2
+                part.count = 10000
+                part.hair_length = 6
+                me.particles.append(part) 
+    
+
+
+class btn_Splint_draw(bpy.types.Operator):
+    bl_idname = "object.splint_draw"
+    bl_label = "Draw splint"
+
+
+    def execute(self, context):
+
+        # First rename de model to 'model'
+        ob = bpy.context.selected_objects[0]
+        bpy.context.view_layer.objects.active = ob
+        ob.name = "model"
+        
+        # Check if there's already a metaball in the scene
+        foundmeta = 'Mball' in bpy.data.objects
+        
+        #If there's not a metaball create the meta and setup resolution and material
+        if foundmeta == False:
+            bpy.ops.object.metaball_add(type='BALL', enter_editmode=False, align='WORLD', location=(0, 0, 100))
+            ob = bpy.context.selected_objects[0]
+            bpy.context.view_layer.objects.active = ob
+            bpy.context.object.data.resolution = 1
+            bpy.context.object.data.threshold = 0.01  
+            create_material('splintmat')
+
+
+            
+        #If its already created setup resolution and material
+        else:
+            bpy.ops.object.select_all(action='DESELECT')
+            bpy.data.objects['Mball'].select_set(True)
+            ob = bpy.context.selected_objects[0]
+            bpy.context.view_layer.objects.active = ob
+            bpy.context.object.data.resolution = 1
+            bpy.context.object.data.threshold = 0.01
+            create_material('splintmat')
+
+
+        bpy.ops.object.select_all(action='DESELECT')
+        bpy.data.objects['model'].select_set(True)
+        ob = bpy.context.selected_objects[0]
+        bpy.context.view_layer.objects.active = ob #Set the model as active object
+
+        #We check if the model already has a vertex group and rename it as VG_Influence, we create if it doesnt exist
+        
+        if len(ob.vertex_groups) == 0:
+            bpy.ops.object.vertex_group_add()
+            ob.vertex_groups[0].name = 'VG_Influence'
+
         else:
             bpy.ops.object.material_slot_remove()
             mat = bpy.data.materials.new(name=name)
@@ -247,6 +371,7 @@ class OPENDENTAL_OT_splint_make(bpy.types.Operator):
         bpy.ops.object.modifier_add(type="SMOOTH")
         bpy.context.object.modifiers["Smooth"].factor = 1
         bpy.context.object.modifiers["Smooth"].iterations = 7
+
         bpy.ops.object.modifier_apply(apply_as="DATA", modifier="Smooth")
         #        objs = [ob for ob in bpy.context.scene.objects if ob.type in ('METABALL')]
         #        bpy.ops.object.delete({"selected_objects": objs})
@@ -300,8 +425,13 @@ class OPENDENTAL_OT_splint_outline_erase(bpy.types.Operator):
 
     def execute(self, context):
         context.scene.tool_settings.unified_paint_settings.weight = 0.0
-        return {"FINISHED"}
 
+        bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Smooth")
+        objs = [ob for ob in bpy.context.scene.objects if ob.type in ('METABALL')]
+        bpy.ops.object.delete({"selected_objects": objs})
+
+    
+        return {"FINISHED"}
 
 
 
