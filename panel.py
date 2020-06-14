@@ -147,6 +147,12 @@ class VIEW3D_PT_ODCModels(bpy.types.Panel):
             "opendental.model_base_type_select", text="Model Base"
         )
 
+        row = layout.row()
+        if context.scene.base_trim_mode == False:
+            row.operator("opendental.trim_base", text="Trim Base")
+        elif context.scene.base_trim_mode == True:
+            row.operator("opendental.trim_base_confirm", text="Confirm")
+            
         layout.row().separator()
         # Model Remesh Button :
         row = layout.row()
@@ -742,6 +748,8 @@ def register():
     # Register model base props
     bpy.utils.register_class(BASE_props)
     bpy.types.Scene.BASE_props = bpy.props.PointerProperty(type=BASE_props)
+    #register base trim mode state var
+    bpy.types.Scene.base_trim_mode = bpy.props.BoolProperty(name="base_trim_mode", default=False)
     #register splint mode state var
     bpy.types.Scene.splint_mode = bpy.props.StringProperty(name="splint_mode", default="OBJECT") #other option is "PAINT" to unhide the add/erase buttons in weight paint mode
     #register splint thickness input
@@ -790,6 +798,7 @@ def unregister():
     del bpy.types.Scene.UNDERCUTS_props
     # delete model base props
     del bpy.types.Scene.BASE_props
+    del bpy.types.Scene.base_trim_mode
     # delete splint mode state var
     del bpy.types.Scene.splint_mode
     # delete splint thickness input

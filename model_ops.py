@@ -5,6 +5,7 @@ from math import degrees, radians, pi
 
 #Blender Imports
 import bpy
+import bmesh
 from mathutils import Vector
 
 
@@ -207,45 +208,31 @@ class OPENDENTAL_OT_hollow_model_base(bpy.types.Operator):
             message = " Please select Model !"
             ShowMessageBox(message=message, icon="COLORSET_01_VEC")
 
+            return {"CANCELLED"}
+
         else:
-            
-            # Get area and space "VIEW_3D" :
 
-            for area in bpy.context.screen.areas:
-                if area.type == "VIEW_3D":
-                    my_area = area
-
-            for space in my_area.spaces:
-                if space.type == "VIEW_3D":
-                    my_space = space
-
-            # Context override: (Need it Only if we run this script in text editor)
-
-            context = bpy.context.copy()
-            context["area"] = my_area
-            context["space_data"] = my_space
-
-            #start = time.perf_counter()
+            bpy.ops.opendental.solid_model_base("INVOKE_DEFAULT")
+            bpy.ops.opendental.remesh_model("INVOKE_DEFAULT")
 
             # Prepare scene settings :
-
-            bpy.ops.view3d.snap_cursor_to_center(context)
-            bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
-            bpy.ops.transform.select_orientation(context, orientation="GLOBAL")
-            bpy.context.scene.tool_settings.transform_pivot_point = 'INDIVIDUAL_ORIGINS'
-
+            bpy.ops.view3d.snap_cursor_to_center()
+            bpy.ops.transform.select_orientation(orientation="GLOBAL")
+            bpy.context.scene.tool_settings.transform_pivot_point = "INDIVIDUAL_ORIGINS"
+            bpy.context.tool_settings.mesh_select_mode = (True, False, False)
             bpy.context.scene.tool_settings.use_snap = False
             bpy.context.scene.tool_settings.use_proportional_edit_objects = False
             bpy.ops.object.mode_set(mode="OBJECT")
+            bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='MEDIAN')
 
 
             ####### Duplicate Model #######
-
+                    
             # Get active Object :
 
             Model = bpy.context.view_layer.objects.active
 
-            # Duplicate Model :
+            # Duplicate Model to Model_hollow:
 
             bpy.ops.object.select_all(action="DESELECT")
             Model.select_set(True)
@@ -259,154 +246,87 @@ class OPENDENTAL_OT_hollow_model_base(bpy.types.Operator):
             mesh_hollow = Model_hollow.data
             mesh_hollow.name = f"{Model.name}_hollow_mesh"
 
-            # Get Model_hollow :
 
-            bpy.ops.object.select_all(action="DESELECT")
-            Model_hollow.select_set(True)
-            bpy.context.view_layer.objects.active = Model_hollow
+            # Duplicate Model_hollow and make a low resolution duplicate :
 
-            # store model hollow location :
-
-            bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
-            hollow_location = Model_hollow.location.copy()
-
-            # center model new model hollow to world origin :
-
-            bpy.ops.view3d.snap_selected_to_cursor(context, use_offset=False) 
-
-
-
-            ####### Flip Model_hollow to top view #######
-            view_rotation = my_space.region_3d.view_rotation
-            view3d_rot_matrix = view_rotation.to_matrix().to_4x4()
-
-            flip_matrix = view3d_rot_matrix.inverted()
-            unflip_matrix = view3d_rot_matrix
-
-            Model_hollow.matrix_world = flip_matrix @ Model_hollow.matrix_world
-            
-            # Make duplicate :
-            bpy.ops.object.mode_set(mode="OBJECT")
-
-            bpy.ops.object.select_all(action="DESELECT")
-            Model_hollow.select_set(True)
-            bpy.context.view_layer.objects.active = Model_hollow
             bpy.ops.object.duplicate_move()
 
-            # get model hollow dup_1 and Make vertex groups :
+            # Rename Model_lowres :
 
-            dup_1 = bpy.context.view_layer.objects.active
-            dup_1.name = 'hollow dup_1'
+            Model_lowres = bpy.context.view_layer.objects.active
+            Model_lowres.name = "Model_lowres"
+            mesh_lowres = Model_lowres.data
+            mesh_lowres.name = "Model_lowres_mesh"
+
+            # Get Model_lowres :
+
             bpy.ops.object.select_all(action="DESELECT")
-            dup_1.select_set(True)
-            bpy.context.view_layer.objects.active = dup_1
+            Model_lowres.select_set(True)
+            bpy.context.view_layer.objects.active = Model_lowres
 
-            # remesh dup_1 1mm :
+            # remesh Model_lowres 1.0 mm :
 
             bpy.context.object.data.use_remesh_smooth_normals = True
             bpy.context.object.data.use_remesh_preserve_volume = True
             bpy.context.object.data.use_remesh_fix_poles = True
-            bpy.context.object.data.remesh_voxel_size = 1
+            bpy.context.object.data.remesh_voxel_size = 1.0
             bpy.ops.object.voxel_remesh()
 
-            #t1 = time.perf_counter()
-            #print(f"before modifiers Done in {t1-start}")
-            
-            # modifiers :
+            # Add Metaballs :
+
+            obj = bpy.context.view_layer.objects.active
+
+            loc, rot, scale = obj.matrix_world.decompose()
+
+            verts = obj.data.vertices
+            vcords = [ rot  @ v.co + loc for v in verts]
+            mball_elements_cords = [ vco - vcords[0] for vco in vcords[1:]]
+
             bpy.ops.object.mode_set(mode="OBJECT")
             bpy.ops.object.select_all(action="DESELECT")
-            dup_1.select_set(True)
-            bpy.context.view_layer.objects.active = dup_1
 
-            # Remesh modifier :
+            bpy.ops.object.metaball_add(type='BALL', radius=1.7, enter_editmode=False, location= vcords[0])
 
-            bpy.ops.object.modifier_add(type='REMESH')
+            Mball_object = bpy.context.view_layer.objects.active
+            Mball_object.name = "Mball_object"
+            mball = Mball_object.data
+            mball.resolution = 0.6
+            bpy.context.object.data.update_method = 'FAST'
 
-            bpy.context.object.modifiers["Remesh"].octree_depth = 6
-            bpy.context.object.modifiers["Remesh"].mode = 'SMOOTH'
-            bpy.context.object.modifiers["Remesh"].scale = 0.6
-            bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Remesh")
+            for i in range(len(mball_elements_cords)) :
+                element = mball.elements.new()
+                element.co = mball_elements_cords[i]
+                element.radius = 3.4
 
-            #smooth modifier :
+            bpy.ops.object.convert(target='MESH')
 
-            bpy.ops.object.modifier_add(type='SMOOTH')
-            bpy.context.object.modifiers["Smooth"].iterations = 200
-            bpy.context.object.modifiers["Smooth"].factor = 1
+            Mball_object = bpy.context.view_layer.objects.active
+            Mball_object.name = "Mball_object"
+            mball_mesh = Mball_object.data
+            mball_mesh.name = "Mball_object_mesh"
 
+            # Make boolean intersect operation :
 
-            # subdiv modifier :
-
-            bpy.ops.object.modifier_add(type='SUBSURF')
-            bpy.context.object.modifiers["Subdivision"].levels = 3
-
-
-            # Shrinkwrap modifier :
-
-            bpy.ops.object.modifier_add(type='SHRINKWRAP')
-
-            bpy.context.object.modifiers["Shrinkwrap"].target = Model_hollow
-            bpy.context.object.modifiers["Shrinkwrap"].wrap_method = 'NEAREST_SURFACEPOINT'
-            bpy.context.object.modifiers["Shrinkwrap"].wrap_mode = 'ABOVE_SURFACE'
-            bpy.context.object.modifiers["Shrinkwrap"].offset = -2.8
-
-
-            # Corrective smooth modifier :
-
-            bpy.ops.object.modifier_add(type='CORRECTIVE_SMOOTH')
-            bpy.context.object.modifiers["CorrectiveSmooth"].iterations = 100
-            bpy.context.object.modifiers["CorrectiveSmooth"].use_only_smooth = True
-            bpy.context.object.modifiers["CorrectiveSmooth"].factor = 1
-
-
-            #apply modifiers :
-
-            bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Smooth")
-
-
-            bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Subdivision")
-            bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Shrinkwrap")
-            bpy.ops.object.modifier_apply(apply_as='DATA', modifier="CorrectiveSmooth") 
-
-
-            # remesh dup_1 1mm :
-
-            bpy.context.object.data.use_remesh_smooth_normals = True
-            bpy.context.object.data.use_remesh_preserve_volume = True
-            bpy.context.object.data.use_remesh_fix_poles = True
-            bpy.context.object.data.remesh_voxel_size = 0.1
-            bpy.ops.object.voxel_remesh()
-
-            #t2 = time.perf_counter()
-            #print(f"modifiers Done in {t2-t1}")
-
-
-            # join the 2 meshes :
-
-            bpy.ops.object.mode_set(mode="OBJECT")
+            bpy.ops.object.select_all(action="DESELECT")
             Model_hollow.select_set(True)
             bpy.context.view_layer.objects.active = Model_hollow
-            bpy.ops.object.join()
-            Model_hollow = bpy.context.view_layer.objects.active
-            Model_hollow.name = f"{Model.name}_hollow"
-            mesh_hollow = Model_hollow.data
-            mesh_hollow.name = f"{Model.name}_hollow_mesh"
 
-            bpy.ops.object.mode_set(mode="EDIT")
-            bpy.ops.mesh.select_all(action='SELECT')
-            bpy.ops.mesh.bisect(plane_co=(0, 0, -6), plane_no=(0, 0, 1), use_fill=True, clear_inner=True, xstart=100, xend=1600, ystart=400, yend=400)
-            bpy.ops.object.mode_set(mode="OBJECT")
+            bpy.ops.object.modifier_add(type='BOOLEAN')
+            bpy.context.object.modifiers["Boolean"].show_viewport = False
+            bpy.context.object.modifiers["Boolean"].operation = 'INTERSECT'
+            bpy.context.object.modifiers["Boolean"].object = bpy.data.objects["Mball_object"]
+            bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Boolean")
 
+            # Delet Model_lowres and Mball_object:
 
-            # Model_base matrix_world reset :
+            bpy.ops.object.select_all(action="DESELECT")
+            Model_lowres.select_set(True)
+            bpy.context.view_layer.objects.active = Model_lowres
+            Mball_object.select_set(True)
 
-            Model_hollow.matrix_world = unflip_matrix @ Model_hollow.matrix_world
+            bpy.ops.object.delete(use_global=False, confirm=False)
+            
 
-            # Restore new Model hollow location :
-
-            Model_hollow.location = hollow_location
-            bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='MEDIAN')
-
-            """
             # Hide everything but hollow model :
 
             bpy.ops.object.select_all(action="DESELECT")
@@ -414,14 +334,129 @@ class OPENDENTAL_OT_hollow_model_base(bpy.types.Operator):
             bpy.context.view_layer.objects.active = Model_hollow
 
             bpy.ops.object.shade_flat()
+            #bpy.ops.object.hide_view_set(unselected=True)
 
-            bpy.ops.object.hide_view_set(context,unselected=True)
-
-            finish = time.perf_counter()
-            print(f"total time Done in {finish-start}")
+            #bpy.ops.view3d.view_all(center=True)
             """
+
+            act_obj = Model_hollow
+            if act_obj.mode == 'EDIT':
+                bm = bmesh.from_edit_mesh(act_obj.data)
+            else:
+                bm = bmesh.new()
+                bm.from_mesh(act_obj.data)
+            new_mesh = bmesh.new()
+
+            onm = {} # old index to new vert map
+            for v in [v for v in bm.verts if v.select]:
+                #norm_trans = v.co + v.normal * 0.3
+                nv = new_mesh.verts.new(v.co)
+                onm[v.index] = nv
+
+            for f in [f for f in bm.faces if f.select]:
+                nfverts = [onm[v.index] for v in f.verts]
+                new_mesh.faces.new(nfverts)
+
+            #bpy.ops.object.editmode_toggle()
+            scene = bpy.context.scene
+
+            new_data = bpy.data.meshes.new("mymesh2")
+            new_mesh.to_mesh(new_data)
+            obj = bpy.data.objects.new("SplitObj2", new_data)
+            bpy.context.scene.collection.objects.link(obj)
+            bpy.data.objects["SplitObj2"].location = bpy.data.objects[act_obj.name].location
+            #bpy.context.scene.update()
+            #bpy.ops.object.transform_apply(location = True, scale = True, rotation = True)
             
-        return {"FINISHED"}
+
+
+            bm.free()
+            new_mesh.free()
+            
+            bpy.ops.object.select_all(action='DESELECT')
+            bpy.data.objects['SplitObj2'].select_set(True)
+            bpy.context.view_layer.objects.active = bpy.data.objects['SplitObj2']
+            #return {"FINISHED"}
+            #bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='MEDIAN')
+            
+            #view_rotation = bpy.context.space_data.region_3d.view_rotation
+            #view3d_rot_matrix = view_rotation.to_matrix().to_3x3()
+
+            world_view = bpy.context.space_data.region_3d.view_rotation #@ Vector((0,0,1))
+            local_view = act_obj.matrix_world.inverted().to_quaternion() @ world_view
+            view3d_rot_matrix = local_view.to_matrix().to_3x3()
+
+            #bpy.ops.transform.resize(value=(1.1, 1.1, 1), orient_type='LOCAL', orient_matrix=view3d_rot_matrix, orient_matrix_type='LOCAL', constraint_axis=(True, True, False), mirror=True, use_proportional_edit=False, proportional_edit_falloff='SMOOTH', proportional_size=1, use_proportional_connected=False, use_proportional_projected=False, release_confirm=True)
+            #return {"FINISHED"}
+            bpy.ops.object.editmode_toggle()
+            bpy.ops.mesh.select_all(action='DESELECT')
+            bpy.context.tool_settings.mesh_select_mode = (False, False, True)
+            bpy.ops.mesh.select_all(action='SELECT')
+
+            #bpy.ops.mesh.extrude_region_shrink_fatten(MESH_OT_extrude_region={"use_normal_flip":False, "mirror":False}, TRANSFORM_OT_shrink_fatten={"value":1, "use_even_offset":True, "mirror":False, "use_proportional_edit":False, "proportional_edit_falloff":'SMOOTH', "proportional_size":1, "use_proportional_connected":False, "use_proportional_projected":False, "snap":False, "snap_target":'CLOSEST', "snap_point":(0, 0, 0), "snap_align":False, "snap_normal":(0, 0, 0), "release_confirm":False, "use_accurate":False})
+            #return {"FINISHED"}
+            bpy.ops.mesh.extrude_region_move()
+            bpy.ops.transform.translate(value=(0,0,5), constraint_axis=(False, False, True), orient_matrix=view3d_rot_matrix)
+
+            bpy.ops.object.editmode_toggle()
+            bpy.ops.transform.translate(value=(0, 0, -1), orient_type='LOCAL', orient_matrix=view3d_rot_matrix, orient_matrix_type='LOCAL', constraint_axis=(False, False, True), mirror=True, use_proportional_edit=False, proportional_edit_falloff='SMOOTH', proportional_size=1, use_proportional_connected=False, use_proportional_projected=False, release_confirm=True)
+            #return {"FINISHED"}
+            bpy.ops.opendental.remesh_model("INVOKE_DEFAULT")
+            bpy.ops.object.editmode_toggle()
+            bpy.ops.mesh.select_all(action='SELECT')
+
+            act_obj = bpy.data.objects['SplitObj2']
+            if act_obj.mode == 'EDIT':
+                bm = bmesh.from_edit_mesh(act_obj.data)
+            else:
+                bm = bmesh.new()
+                bm.from_mesh(act_obj.data)
+            for v in bm.verts:
+                v.co += v.normal * 0.3
+            bm.free()
+            #return {"FINISHED"}
+
+            
+            bpy.context.tool_settings.mesh_select_mode = (False, False, True)
+            #bpy.ops.mesh.extrude_region_shrink_fatten(MESH_OT_extrude_region={"use_normal_flip":False, "mirror":False}, TRANSFORM_OT_shrink_fatten={"value":-1, "use_even_offset":True, "mirror":False, "use_proportional_edit":True, "proportional_edit_falloff":'SMOOTH', "proportional_size":1, "use_proportional_connected":False, "use_proportional_projected":True, "snap":False, "snap_target":'CLOSEST', "snap_point":(0, 0, 0), "snap_align":False, "snap_normal":(0, 0, 0), "release_confirm":False, "use_accurate":False})
+            
+            
+            
+            bpy.ops.object.editmode_toggle()
+            bpy.ops.opendental.remesh_model("INVOKE_DEFAULT")
+            bpy.ops.object.select_all(action='DESELECT')
+            """
+
+            bpy.ops.object.editmode_toggle()
+            bpy.ops.mesh.select_all(action='SELECT')
+
+            #calculate bounding box center of original mesh
+            #o = bpy.context.object
+            local_bbox_center = 0.125 * sum((Vector(b) for b in Model_hollow.bound_box), Vector())
+            global_bbox_center = Model_hollow.matrix_world @ local_bbox_center
+
+            cut_plane_pos = global_bbox_center + 7*(context.space_data.region_3d.view_rotation @ Vector((0,0,-1)))
+
+            bpy.ops.mesh.bisect(plane_co=tuple(cut_plane_pos), plane_no=tuple(context.space_data.region_3d.view_rotation @ Vector((0,0,-1))), use_fill=True, clear_inner=False, clear_outer=True)
+            bpy.ops.object.editmode_toggle()
+
+            return {"FINISHED"}
+
+            act_obj = Model_hollow
+            bpy.data.objects[act_obj.name].select_set(True)
+            bpy.context.view_layer.objects.active = act_obj
+            #bpy.ops.opendental.remesh_model("INVOKE_DEFAULT")
+            bool_base_cut = bpy.data.objects[act_obj.name].modifiers.new(type="BOOLEAN", name="bool_base_cut")
+            bool_base_cut.object = bpy.data.objects["SplitObj2"]
+            bool_base_cut.operation = 'DIFFERENCE'
+            #bpy.ops.object.modifier_apply(modifier="bool_base_cut")
+            bpy.ops.object.select_all(action='DESELECT')
+            bpy.context.view_layer.objects.active = bpy.data.objects["SplitObj2"]
+            bpy.data.objects["SplitObj2"].select_set(True)
+            #bpy.ops.object.delete() 
+
+
+            return {"FINISHED"}
 
 class OPENDENTAL_OT_solid_model_base(bpy.types.Operator):
     """Make a model base from top user view prspective"""
@@ -441,9 +476,7 @@ class OPENDENTAL_OT_solid_model_base(bpy.types.Operator):
 
         else:
 
-            extrude_value = (0, 0, -15)
-
-            # Get area and space "VIEW_3D" :...........................
+            # Get area and space "VIEW_3D" :
 
             for area in bpy.context.screen.areas:
                 if area.type == "VIEW_3D":
@@ -453,83 +486,102 @@ class OPENDENTAL_OT_solid_model_base(bpy.types.Operator):
                 if space.type == "VIEW_3D":
                     my_space = space
 
-            # [DEBUG] Context override: Need it Only if we run this script in text editor
-            #context = bpy.context.copy()
-            #context["area"] = my_area
-            #context["space_data"] = my_space
+            # Context override: (Need it Only if we run this script in text editor)
+
+            context = bpy.context.copy()
+            context["area"] = my_area
+            context["space_data"] = my_space
 
             # Prepare scene settings :
 
-            bpy.ops.view3d.snap_cursor_to_center()
-            bpy.ops.transform.select_orientation(orientation="GLOBAL")
+            bpy.ops.view3d.snap_cursor_to_center(context)
+            bpy.ops.transform.select_orientation(context, orientation="GLOBAL")
             bpy.context.scene.tool_settings.transform_pivot_point = "INDIVIDUAL_ORIGINS"
+            bpy.context.tool_settings.mesh_select_mode = (True, False, False)
             bpy.context.scene.tool_settings.use_snap = False
             bpy.context.scene.tool_settings.use_proportional_edit_objects = False
             bpy.ops.object.mode_set(mode="OBJECT")
 
+
+            ####### Duplicate Model #######
+                        
             # Get active Object :
 
             Model = bpy.context.view_layer.objects.active
 
-            # Duplicate Model :
+            # Duplicate Model to Model_Base :
 
             bpy.ops.object.select_all(action="DESELECT")
             Model.select_set(True)
             bpy.context.view_layer.objects.active = Model
             bpy.ops.object.duplicate_move()
 
-            # ....Rename Model_base....
+            # Rename Model_Base :
 
             Model_base = bpy.context.view_layer.objects.active
             Model_base.name = f"{Model.name}_base"
             mesh_base = Model_base.data
             mesh_base.name = f"{Model.name}_base_mesh"
 
-            # Get Model_base :
-
-            Model = Model_base
-
             bpy.ops.object.select_all(action="DESELECT")
-            Model.select_set(True)
-            bpy.context.view_layer.objects.active = Model
-            bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY", center="MEDIAN")
+            Model_base.select_set(True)
+            bpy.context.view_layer.objects.active = Model_base
 
-            # Select border :
+
+            ####### Flip Model_Base to top view #######
+
+            view_rotation = my_space.region_3d.view_rotation
+            view3d_rot_matrix = view_rotation.to_matrix().to_4x4()
+
+            flip_matrix = view3d_rot_matrix.inverted()
+            unflip_matrix = view3d_rot_matrix
+
+            Model_base.matrix_world = flip_matrix @ Model_base.matrix_world
+
+            # Select base boarder :
+                        
             bpy.ops.object.mode_set(mode="EDIT")
             bpy.ops.mesh.select_all(action="DESELECT")
-            bpy.context.tool_settings.mesh_select_mode = (True, False, False)
             bpy.ops.mesh.select_non_manifold()
 
-            ###......... Get View values : ............###
+            # Make some calcul of average z_cordinate of border vertices :
 
-            view3d = my_space.region_3d
-            view_matrix = view3d.view_matrix
+            bpy.ops.object.mode_set(mode="OBJECT") 
+            obj = bpy.context.view_layer.objects.active
+            obj_mx = obj.matrix_world.copy()
+            verts = obj.data.vertices           
+            global_z_cords = [(obj_mx @ v.co)[2] for v in verts if v.select]
 
-            view_matrix_3 = view_matrix.to_3x3()
+            max_z = max(global_z_cords)
+            min_z = min(global_z_cords)
+            offset = max_z - min_z
 
-            ###............. Project Base Operation...............###
+            bpy.ops.object.mode_set(mode="EDIT")
 
-            # Extrude selected vertices :
+            # Border_2 = Extrude 1st border loop by offset/2 + 1 :
+
+            extrude_value = (0, 0, -(offset/2 + 1.5))
 
             bpy.ops.mesh.extrude_region_move()
-            bpy.ops.transform.translate(
-                value=extrude_value,
-                orient_type="VIEW",
-                orient_matrix_type="VIEW",
-                constraint_axis=(False, False, True),
-            )
+            bpy.ops.transform.translate(value=extrude_value, constraint_axis=(False, False, True))
 
-            # Scale border vertices to zero :
+            # Relax border loop :
 
-            bpy.ops.transform.resize(
-                value=(1, 1, 0),
-                orient_type="VIEW",
-                orient_matrix=view_matrix_3.transposed(),
-                orient_matrix_type="VIEW",
-                constraint_axis=(False, False, True),
-            )
+            bpy.ops.mesh.looptools_relax(input="selected", interpolation="cubic",
+            iterations="10", regular=True)
 
-            # and fill base :
+            # Scale Border_2 vertices to zero :
+
+            bpy.ops.transform.resize(value=(1, 1, 0), constraint_axis=(False, False, True))
+
+            # Border_3 = Extrude Border_2 by -10 :
+
+            extrude_value = (0, 0, -6)
+
+            bpy.ops.mesh.extrude_region_move()
+            bpy.ops.transform.translate(value=extrude_value, constraint_axis=(False, False, True))
+
+            # fill base :
 
             bpy.ops.mesh.fill()
 
@@ -537,16 +589,472 @@ class OPENDENTAL_OT_solid_model_base(bpy.types.Operator):
 
             bpy.ops.mesh.dissolve_limited()
 
+            # Add vertex group Border_3 vertices :
+
+            Model_base.vertex_groups.clear()
+            bpy.context.tool_settings.mesh_select_mode = (True, False, False)
+
+            Model_base.vertex_groups.new(name=f"base_border_vgroup")
+            bpy.ops.object.vertex_group_assign()
+
             # Repare geometry resuting from precedent operation :
 
             bpy.ops.mesh.select_all(action="SELECT")
             bpy.ops.mesh.normals_make_consistent(inside=False)
             bpy.ops.mesh.select_all(action="DESELECT")
-            bpy.ops.mesh.select_non_manifold()
-            bpy.ops.mesh.delete(type="FACE")
+            Model_base.vertex_groups.active_index = 0
+            bpy.ops.object.vertex_group_select()
             bpy.ops.object.mode_set(mode="OBJECT")
 
+            # Hide everything but Model_base :
+
+            bpy.ops.object.mode_set(mode="OBJECT")
+
+            bpy.ops.object.shade_flat()
+
+            bpy.ops.object.hide_view_set(context, unselected=True)
+
+            # Model_base matrix_world reset :
+
+            Model_base.matrix_world = unflip_matrix @ Model_base.matrix_world
+
+
+
             return {"FINISHED"}
+
+class OPENDENTAL_OT_trim_base(bpy.types.Operator):
+    """Dental Model base triming tool"""
+
+    bl_idname = "opendental.trim_base"
+    bl_label = "Trim Base"
+    bl_options = {"REGISTER", "UNDO"}
+
+
+    def modal(self, context, event):
+
+        if event.type == "RET":
+
+            bpy.ops.object.mode_set(mode="OBJECT")
+            bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='MEDIAN')
+
+            Model = bpy.context.view_layer.objects.active
+            loc = Model.location.copy()# get model location
+            view_rotation = context.space_data.region_3d.view_rotation
+
+            view3d_rot_matrix = view_rotation.to_matrix().to_4x4()# get v3d rotation matrix 4x4
+
+            # Add cube :
+            bpy.ops.mesh.primitive_cube_add(size=120, enter_editmode=False )
+
+            frame = bpy.context.view_layer.objects.active
+            frame.name = "my_frame_cutter"
+
+
+            # Reshape and align cube :
+
+            frame.matrix_world = view3d_rot_matrix 
+
+            frame.location = loc
+            frame.location[1] += 30
+
+            bpy.context.object.display_type = 'WIRE'
+            bpy.context.object.scale[1] = 0.5
+            bpy.context.object.scale[2] = 2
+            
+
+            # Boolean :
+
+            bpy.ops.object.mode_set(mode="OBJECT")
+            bpy.ops.object.select_all(action="DESELECT")
+            Model.select_set(True)
+            bpy.context.view_layer.objects.active = Model
+
+            bpy.ops.object.modifier_add(type='BOOLEAN')
+            bpy.context.object.modifiers["Boolean"].show_viewport = False
+            bpy.context.object.modifiers["Boolean"].operation = 'DIFFERENCE'
+            bpy.context.object.modifiers["Boolean"].object = frame
+            #bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Boolean")
+
+            # Select frame :
+
+            bpy.ops.object.select_all(action="DESELECT")
+            frame.select_set(True)
+            bpy.context.view_layer.objects.active = frame
+
+            bpy.context.scene.transform_orientation_slots[0].type = 'VIEW'
+            
+            message = " Move the frame (G + Y) and press confirm button ! Please make part to remove inside the frame "
+            ShowMessageBox(message=message, icon="COLORSET_02_VEC")
+
+            bpy.types.Scene.base_trim_mode = True
+
+            return {"FINISHED"}
+
+        elif event.type == ("ESC"):
+            bpy.types.Scene.base_trim_mode = False
+
+            return {"CANCELLED"}
+
+
+        else :
+
+            # allow navigation
+            return {"PASS_THROUGH"}
+
+        
+
+        return {"RUNNING_MODAL"}
+
+
+    def invoke(self, context, event):
+
+        if bpy.context.selected_objects == []:
+
+            message = " Please select Model !"
+            ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+            bpy.types.Scene.base_trim_mode = False
+            return {"CANCELLED"}
+
+        else:
+
+            if context.space_data.type == "VIEW_3D":
+
+                # Hide everything but model :
+
+                bpy.ops.object.mode_set(mode="OBJECT")
+
+                Model = bpy.context.view_layer.objects.active
+                bpy.ops.object.select_all(action="DESELECT")
+                Model.select_set(True)
+
+                #bpy.ops.object.hide_view_set(unselected=True)
+
+                bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='MEDIAN')
+
+                message = " Please align View to Model and click 'ENTER' or 'Confirm' !"
+                ShowMessageBox(message=message, icon="COLORSET_02_VEC")
+                
+                context.window_manager.modal_handler_add(self)
+
+                bpy.types.Scene.base_trim_mode = True
+
+                return {"RUNNING_MODAL"}
+
+            else:
+
+                self.report({"WARNING"}, "Active space must be a View3d")
+
+                return {"CANCELLED"}
+
+class OPENDENTAL_OT_trim_base_confirm(bpy.types.Operator):
+    """confirm model trim base operation"""
+
+    bl_idname = "opendental.trim_base_confirm"
+    bl_label = "confirm"
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context) :
+
+        if bpy.context.selected_objects == []:
+
+            message = " Please select Model !"
+            ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+            bpy.types.Scene.base_trim_mode = False
+
+            return {"CANCELLED"}
+
+        else:
+            
+            bpy.context.tool_settings.mesh_select_mode = (True, False, False)
+            bpy.ops.object.mode_set(mode="OBJECT")
+            frame = bpy.data.objects["my_frame_cutter"]
+            
+            bpy.ops.object.select_all(action="DESELECT")
+            frame.select_set(True)
+            bpy.context.view_layer.objects.active = frame
+            bpy.ops.object.select_all(action='INVERT')
+            Model = bpy.context.selected_objects[0]
+            bpy.context.view_layer.objects.active = Model
+
+            bpy.context.scene.transform_orientation_slots[0].type = "GLOBAL"
+            bpy.ops.wm.tool_set_by_id(name="builtin.select")
+
+            # get initial location :
+
+            bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='MEDIAN')
+
+            loc_initial = Model.location.copy() 
+
+            # get initial state :
+
+            bpy.ops.object.mode_set(mode="EDIT")
+            bpy.ops.mesh.select_all(action="DESELECT")
+            bpy.ops.mesh.select_non_manifold()
+
+            bpy.ops.object.mode_set(mode="OBJECT")
+            verts_initial = Model.data.vertices
+            selected_verts_initial =  [v for v in verts_initial if v.select]  
+
+            # ....Add undo history point...:
+            bpy.ops.ed.undo_push()
+
+            # Subdivide cube 10 iterations 3 times :
+
+            bpy.ops.object.select_all(action="DESELECT")
+            frame.select_set(True)
+            bpy.context.view_layer.objects.active = frame
+
+            bpy.ops.object.mode_set(mode="EDIT")
+            bpy.ops.mesh.subdivide(number_cuts=10)
+            #bpy.ops.mesh.subdivide(number_cuts=9)
+            bpy.ops.object.mode_set(mode="OBJECT")
+
+            # ....Add undo history point...:
+            bpy.ops.ed.undo_push()
+
+            # Apply boolean modifier :
+
+            bpy.ops.object.select_all(action="DESELECT")
+            Model.select_set(True)
+            bpy.context.view_layer.objects.active = Model
+
+            bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Boolean")
+            
+            # Result Check :
+
+            bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='MEDIAN')
+            loc_current = Model.location.copy()
+
+            bpy.ops.object.mode_set(mode="EDIT")
+            bpy.ops.mesh.select_all(action="DESELECT")
+            bpy.ops.mesh.select_non_manifold()
+
+            bpy.ops.object.mode_set(mode="OBJECT")
+            verts_current = Model.data.vertices
+            
+            selected_verts =  [v for v in verts_current if v.select]         
+
+            if selected_verts_initial == [] : #closed mesh
+
+                if selected_verts == [] and loc_current != loc_initial:
+
+                    # Delete frame :
+                    frame = bpy.data.objects["my_frame_cutter"]
+                    bpy.ops.object.select_all(action="DESELECT")
+                    frame.select_set(True)
+                    bpy.context.view_layer.objects.active = frame
+                    bpy.ops.object.delete(use_global=False, confirm=False)
+
+                    bpy.ops.object.select_all(action="DESELECT")
+                    Model.select_set(True)
+                    bpy.context.view_layer.objects.active = Model
+
+                    message = " Model is succeffuly trimed !"
+                    ShowMessageBox(message=message, icon="COLORSET_03_VEC")
+
+                    print("operation done in 1st check")
+                
+                    return {"FINISHED"}
+
+                else :
+
+                    bpy.ops.ed.undo()
+                    frame = bpy.data.objects["my_frame_cutter"]
+                    bpy.ops.object.select_all(action="DESELECT")
+                    frame.select_set(True)
+                    bpy.context.view_layer.objects.active = frame
+
+                    frame.location[1] += 1
+
+                    bpy.ops.object.mode_set(mode="EDIT")
+                    bpy.ops.mesh.subdivide(number_cuts=10)
+                    bpy.ops.object.mode_set(mode="OBJECT")
+
+                    bpy.ops.object.select_all(action="DESELECT")
+                    Model.select_set(True)
+                    bpy.context.view_layer.objects.active = Model
+
+                    ###............... Decimate Model ....................###
+
+                    bpy.ops.object.mode_set(mode="OBJECT")
+                    bpy.ops.object.modifier_add(type="DECIMATE")
+                    bpy.context.object.modifiers["Decimate"].ratio = 0.7
+                    bpy.ops.object.modifier_apply(apply_as="DATA", modifier="Decimate")
+                    
+                    # Apply boolean modifier :
+
+                    bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Boolean")
+
+                    # recheck :
+
+                    bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='MEDIAN')
+                    loc_current = Model.location.copy()
+
+                    bpy.ops.object.mode_set(mode="EDIT")
+                    bpy.ops.mesh.select_all(action="DESELECT")
+                    bpy.ops.mesh.select_non_manifold()
+
+                    bpy.ops.object.mode_set(mode="OBJECT")
+                    verts_current = Model.data.vertices
+                    selected_verts =  [v for v in verts_current if v.select]         
+                    
+
+                    if selected_verts == [] and loc_current != loc_initial:
+
+                        # Delete frame :
+                        frame = bpy.data.objects["my_frame_cutter"]
+                        bpy.ops.object.select_all(action="DESELECT")
+                        frame.select_set(True)
+                        bpy.context.view_layer.objects.active = frame
+                        bpy.ops.object.delete(use_global=False, confirm=False)
+
+                        bpy.ops.object.select_all(action="DESELECT")
+                        Model.select_set(True)
+                        bpy.context.view_layer.objects.active = Model
+
+                        message = " Model is succeffuly trimed !"
+                        ShowMessageBox(message=message, icon="COLORSET_03_VEC")
+
+                        print("operation done in 2nd check")
+                    
+                        return {"FINISHED"}
+
+                    else :
+                        bpy.ops.ed.undo()
+
+                        # Delete frame :
+                        frame = bpy.data.objects["my_frame_cutter"]
+                        bpy.ops.object.select_all(action="DESELECT")
+                        frame.select_set(True)
+                        bpy.context.view_layer.objects.active = frame
+                        bpy.ops.object.delete(use_global=False, confirm=False)
+
+                        # remove boolean modifier :
+
+                        bpy.ops.object.select_all(action="DESELECT")
+                        Model.select_set(True)
+                        bpy.context.view_layer.objects.active = Model
+                        bpy.ops.object.modifier_remove(modifier="Boolean")
+
+                        bpy.ops.object.select_all(action="DESELECT")
+                        Model.select_set(True)
+                        bpy.context.view_layer.objects.active = Model
+
+                        message = " Model trim operation failed please try to trim model manualy !"
+                        ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+
+                        bpy.types.Scene.base_trim_mode = False
+
+                        return {"CANCELLED"}
+
+            else : # Open mesh
+
+                if loc_current != loc_initial:
+
+                    # Delete frame :
+                    frame = bpy.data.objects["my_frame_cutter"]
+                    bpy.ops.object.select_all(action="DESELECT")
+                    frame.select_set(True)
+                    bpy.context.view_layer.objects.active = frame
+                    bpy.ops.object.delete(use_global=False, confirm=False)
+
+                    bpy.ops.object.select_all(action="DESELECT")
+                    Model.select_set(True)
+                    bpy.context.view_layer.objects.active = Model
+
+                    message = " Model is succeffuly trimed !"
+                    ShowMessageBox(message=message, icon="COLORSET_03_VEC")
+
+                    print("operation done in 1st check")
+
+                    bpy.types.Scene.base_trim_mode = False
+                
+                    return {"FINISHED"}
+
+                else :
+
+                    bpy.ops.ed.undo()
+                    frame = bpy.data.objects["my_frame_cutter"]
+                    bpy.ops.object.select_all(action="DESELECT")
+                    frame.select_set(True)
+                    bpy.context.view_layer.objects.active = frame
+
+                    frame.location[1] += 1
+
+                    bpy.ops.object.mode_set(mode="EDIT")
+                    bpy.ops.mesh.subdivide(number_cuts=10)
+                    bpy.ops.object.mode_set(mode="OBJECT")
+
+                    bpy.ops.object.select_all(action="DESELECT")
+                    Model.select_set(True)
+                    bpy.context.view_layer.objects.active = Model
+
+                    ###............... Decimate Model ....................###
+
+                    bpy.ops.object.mode_set(mode="OBJECT")
+                    bpy.ops.object.modifier_add(type="DECIMATE")
+                    bpy.context.object.modifiers["Decimate"].ratio = 0.7
+                    bpy.ops.object.modifier_apply(apply_as="DATA", modifier="Decimate")
+                    
+                    # Apply boolean modifier :
+
+                    bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Boolean")
+
+                    # recheck :
+
+                    bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='MEDIAN')
+                    loc_current = Model.location.copy()
+
+                    if loc_current != loc_initial:
+
+                        # Delete frame :
+                        frame = bpy.data.objects["my_frame_cutter"]
+                        bpy.ops.object.select_all(action="DESELECT")
+                        frame.select_set(True)
+                        bpy.context.view_layer.objects.active = frame
+                        bpy.ops.object.delete(use_global=False, confirm=False)
+
+                        bpy.ops.object.select_all(action="DESELECT")
+                        Model.select_set(True)
+                        bpy.context.view_layer.objects.active = Model
+
+                        message = " Model is succeffuly trimed !"
+                        ShowMessageBox(message=message, icon="COLORSET_03_VEC")
+
+                        print("operation done in 2nd check")
+
+                        bpy.types.Scene.base_trim_mode = False
+                    
+                        return {"FINISHED"}
+
+                    else :
+                        bpy.ops.ed.undo()
+
+                        # Delete frame :
+                        frame = bpy.data.objects["my_frame_cutter"]
+                        bpy.ops.object.select_all(action="DESELECT")
+                        frame.select_set(True)
+                        bpy.context.view_layer.objects.active = frame
+                        bpy.ops.object.delete(use_global=False, confirm=False)
+
+                        # remove boolean modifier :
+
+                        bpy.ops.object.select_all(action="DESELECT")
+                        Model.select_set(True)
+                        bpy.context.view_layer.objects.active = Model
+                        bpy.ops.object.modifier_remove(modifier="Boolean")
+
+                        bpy.ops.object.select_all(action="DESELECT")
+                        Model.select_set(True)
+                        bpy.context.view_layer.objects.active = Model
+
+                        message = " Model trim operation failed please try to trim model manualy !"
+                        ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+
+                        bpy.types.Scene.base_trim_mode = False
+
+                        return {"CANCELLED"}
+
 
 
 class OPENDENTAL_OT_remesh_model(bpy.types.Operator):
@@ -581,16 +1089,24 @@ class OPENDENTAL_OT_remesh_model(bpy.types.Operator):
             bpy.ops.mesh.select_all(action="SELECT")
             bpy.ops.mesh.normals_make_consistent(inside=False)
             bpy.ops.object.mode_set(mode="OBJECT")
-            bpy.ops.object.select_all(action="DESELECT")
+            #bpy.ops.object.select_all(action="DESELECT")
 
             return {"FINISHED"}
 
+def ShowMessageBox(message = "", title = "Message Box", icon = 'INFO'):
+
+    def draw(self, context):
+        self.layout.label(text=message)
+
+    bpy.context.window_manager.popup_menu(draw, title = title, icon = icon)
 
 def register():
     bpy.utils.register_class(OPENDENTAL_OT_decimate_model)
     bpy.utils.register_class(OPENDENTAL_OT_clean_model)
     bpy.utils.register_class(OPENDENTAL_OT_model_base_type_select)
     bpy.utils.register_class(OPENDENTAL_OT_solid_model_base)
+    bpy.utils.register_class(OPENDENTAL_OT_trim_base)
+    bpy.utils.register_class(OPENDENTAL_OT_trim_base_confirm)
     bpy.utils.register_class(OPENDENTAL_OT_remesh_model)
     bpy.utils.register_class(OPENDENTAL_OT_hollow_model_base)
 
@@ -600,5 +1116,7 @@ def unregister():
     bpy.utils.unregister_class(OPENDENTAL_OT_clean_model)
     bpy.utils.unregister_class(OPENDENTAL_OT_model_base_type_select)
     bpy.utils.unregister_class(OPENDENTAL_OT_solid_model_base)
+    bpy.utils.unregister_class(OPENDENTAL_OT_trim_base)
+    bpy.utils.unregister_class(OPENDENTAL_OT_trim_base_confirm)
     bpy.utils.unregister_class(OPENDENTAL_OT_remesh_model)
     bpy.utils.unregister_class(OPENDENTAL_OT_hollow_model_base)
