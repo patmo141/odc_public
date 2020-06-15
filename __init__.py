@@ -23,8 +23,8 @@
 
 bl_info = {
     "name": "Open Dental CAD for Blender",
-    "author": "Patrick R. Moore",
-    "version": (1, 0, 3),
+    "author": "Patrick R. Moore DMD, Georgi Talmazov DDS, Issam Dakir DMD, Raúl Ruiz Vera DDS",
+    "version": (1, 1, 0),
     "blender": (2, 80, 0),
     "api": 59393,
     "location": "3D View -> UI SIDE PANEL ",
