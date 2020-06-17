@@ -580,8 +580,8 @@ class CBGetCrownForm(bpy.types.Operator):
         odcutils.obj_from_lib(settings.tooth_lib,self.ob_list)
         
         ob = bpy.data.objects[self.ob_list]
-        sce.objects.link(ob)
-        ob.location = sce.cursor_location
+        context.collection.objects.link(ob)
+        ob.location = context.scene.cursor.location
         
         
         if tooth != None:
@@ -647,8 +647,6 @@ class CBGetCrownForm(bpy.types.Operator):
             
         #fill the bottom if it's a pontic
         
-        #layer management
-        odcutils.layer_management(sce.odc_teeth)
         #odcutils.transform_management(tooth,sce)
         
         return {'FINISHED'}
