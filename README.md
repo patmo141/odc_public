@@ -1,2 +1,10 @@
 # odc_public
-Addon for Blender meant to streamline dental CAD and design workflows
+ODC v2.0 - The open source dental CAD solution for Blender 2.8 (LTS).
+Current features include:
+- basic world alignment, link/unlink, join/separate
+- mesh: clean, fill hole, decimate, smooth, curve trim, square cut
+- model: solid and hollow base making, color
+- undercut surveying, undercut blockout
+- splint shell making
+
+ODC v2.0 build on the predecesor, ODC, originally developed by Dr. Patrick Moore. The new ODC v2.0 for the latest Blender release is the conintued work of Dr. Issam Dakir DMD, Dr. Raúl Ruiz Vera DDS, Dr. Georgi Talmazov DDS, and Dr. Patrick Moore DMD.
