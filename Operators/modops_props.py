@@ -11,7 +11,7 @@ class ODC_modops_props(bpy.types.PropertyGroup):
 
     # Cutting tools props :
     #########################################################################################
-    cutting_target = StringProperty(name="", default = "No Target !", description="Target",)
+    cutting_target : StringProperty(name="", default = "No Target !", description="Target",)
 
     ##############################################
     cutting_tool_list = ["Curve Cutting Tool", "Square Cutting Tool"]
