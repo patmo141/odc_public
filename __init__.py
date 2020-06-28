@@ -25,7 +25,7 @@ bl_info = {
     "name": "Open Dental CAD for Blender",
     "author": "Patrick R. Moore DMD, Georgi Talmazov DDS, Issam Dakir DMD, Raúl Ruiz Vera DDS",
     "version": (1, 1, 0),
-    "blender": (2, 80, 0),
+    "blender": (2, 80, 2),
     "api": 59393,
     "location": "3D View -> UI SIDE PANEL ",
     "description": "Dental CAD Tool Package",
@@ -38,42 +38,33 @@ bl_info = {
 
 # we need to add the odc subdirectory to be searched for imports
 # http://stackoverflow.com/questions/918154/relative-paths-in-python
-import sys, os, platform, inspect, imp
 
-sys.path.append(os.path.join(os.path.dirname(__file__)))
-print(os.path.join(os.path.dirname(__file__)))
+#############################################################################################
+#Python imports :
+import bpy, sys, os, platform, inspect, imp
 
-""" 
-if "bpy" in locals():
-    import imp
-    
-    imp.reload(classes)
-    imp.reload(odcutils)
-    imp.reload(crown)
-    imp.reload(margin)
-    imp.reload(bridge)
-    imp.reload(panel)
-    print("Reloaded multifiles")
-    
-else:
-    from . import classes, odcutils, crown, margin, bridge, panel
-    print("Imported multifiles")
-"""
-import bpy
+#Blender imports :
 from bpy.types import Operator, AddonPreferences
-from bpy.props import (
-    StringProperty,
-    IntProperty,
-    BoolProperty,
-    EnumProperty,
-    FloatProperty,
-)
+from bpy.props import (StringProperty, IntProperty, BoolProperty, EnumProperty, FloatProperty)
 from bpy.app.handlers import persistent
 
-# from .
+#Add Addon path to sys.path :
+addon_path = os.path.dirname(os.path.abspath(__file__))
+if not addon_path in sys.path:
+    sys.path.append(addon_path)
 
-from . import odcutils
 
+#############################################################################################
+
+#Addon modules imports :
+from . Addon_utils import odcutils
+from . Operators import (classes,  crown, margin, bridge, splint,
+                         implant, help, flexible_tooth, bracket_placement, denture_base,
+                         occlusion, ortho, modops_props, model_ops, blockout_undercuts) # , odcmenus, bgl_utils
+from . Panels import panel
+
+
+#Update_brackets function :
 
 def update_brackets(self, context):
     settings = odcutils.get_settings()
@@ -83,15 +74,12 @@ def update_brackets(self, context):
 
 
 # addon preferences
-class ODCAddonPreferences(AddonPreferences):
+class ODC_AddonPreferences(AddonPreferences):
     bl_idname = __name__
 
     addons = bpy.context.preferences.addons
-
-    folderpath = os.path.dirname(os.path.abspath(__file__))
-    print("SETTINGS FOLDERPATH")
-    print(folderpath)
-    data_folder = os.path.join(folderpath, "data\\")
+   
+    data_folder = os.path.join(addon_path, "Resources\\data\\")
 
     # addons_folder = bpy.utils.script_paths('addons')[0]
     # data_folder =os.path.join(addons_folder,'odc_public','data')
@@ -113,48 +101,48 @@ class ODCAddonPreferences(AddonPreferences):
         workflow_enum.append((str(index), workflow_modes[index], str(index)))
 
     # real properties
-    tooth_lib = bpy.props.StringProperty(
+    tooth_lib : StringProperty(
         name="Tooth Library",
         default=def_tooth_lib,
         # default = '',
         subtype="FILE_PATH",
     )
 
-    mat_lib = bpy.props.StringProperty(
+    mat_lib : StringProperty(
         name="Material Library",
         default=def_mat_lib,
         # default = '',
         subtype="FILE_PATH",
     )
 
-    imp_lib = bpy.props.StringProperty(
+    imp_lib : StringProperty(
         name="Implant Library",
         default=def_imp_lib,
         # default = '',
         subtype="FILE_PATH",
     )
 
-    drill_lib = bpy.props.StringProperty(
+    drill_lib : StringProperty(
         name="Drill Library",
         default=def_drill_lib,
         # default = '',
         subtype="FILE_PATH",
     )
 
-    ortho_lib = bpy.props.StringProperty(
+    ortho_lib : StringProperty(
         name="Bracket Library",
         default=def_ortho_lib,
         # default = '',
         subtype="FILE_PATH",
     )
 
-    debug = IntProperty(name="Debug Level", default=1, min=0, max=4,)
+    debug : IntProperty(name="Debug Level", default=1, min=0, max=4,)
 
-    behavior = EnumProperty(
+    behavior : EnumProperty(
         name="Behavior Mode", description="", items=behavior_enum, default="2",
     )
 
-    workflow = EnumProperty(
+    workflow : EnumProperty(
         items=workflow_enum,
         name="Workflow Mode",
         description="SINGLE: for single units, LINEAR: do each tooth start to finish, MULTI_PARALLELS: Do all teeth at each step",
@@ -162,13 +150,13 @@ class ODCAddonPreferences(AddonPreferences):
     )
 
     # Ortho Settings
-    bgauge_override = BoolProperty(
+    bgauge_override : BoolProperty(
         name="Override Edge Height",
         default=False,
         description="Use manual gauge height instead of default bracket prescription",
     )
 
-    bracket_gauge = FloatProperty(
+    bracket_gauge : FloatProperty(
         name="Gauge Height",
         default=4,
         min=0.5,
@@ -177,7 +165,7 @@ class ODCAddonPreferences(AddonPreferences):
         description="Manual gauge height to override the default library prescription",
     )
 
-    bracket = EnumProperty(items=update_brackets, name="Choose Bracket")
+    bracket : EnumProperty(items=update_brackets, name="Choose Bracket")
 
     # behavior_mode = EnumProperty(name="How Active Tooth is determined by operator", description="'LIST' is more predictable, 'ACTIVE' more like blender, 'ACTIVE_SELECTED' is for advanced users", items=behavior_enum, default='0')
 
@@ -193,6 +181,8 @@ class ODCAddonPreferences(AddonPreferences):
         layout.prop(self, "workflow")
         layout.prop(self, "debug")
 
+#############################################################################################
+#addon_prefs_odc operator :
 
 class OPENDENTAL_OT_addon_prefs_odc(Operator):
     """Display example preferences"""
@@ -216,6 +206,8 @@ class OPENDENTAL_OT_addon_prefs_odc(Operator):
 
         return {"FINISHED"}
 
+#############################################################################################
+#load_post_method function :
 
 @persistent
 def load_post_method(dummy):
@@ -231,6 +223,8 @@ def load_post_method(dummy):
         print(splint.tooth_string)
         # splint.load_components_from_string(bpy.context.scene)
 
+#############################################################################################
+#save_pre_method function :
 
 @persistent
 def save_pre_method(dummy):
@@ -242,6 +236,8 @@ def save_pre_method(dummy):
     for splint in bpy.context.scene.odc_splints:
         splint.save_components_to_string()
 
+#############################################################################################
+#pause_playback function :
 
 @persistent
 def pause_playback(scene):
@@ -250,7 +246,8 @@ def pause_playback(scene):
         scene.frame_set(scene.frame_current - 1)  # prevent replaying
         print("REACHED THE END")
 
-
+#############################################################################################
+#stop_playback function :
 @persistent
 def stop_playback(scene):
     if scene.frame_current == scene.frame_end:
@@ -260,6 +257,9 @@ def stop_playback(scene):
 
 
 # or restore frames:
+#############################################################################################
+#stop_playback_restore function :
+
 @persistent
 def stop_playback_restore(scene):
     if scene.frame_current == scene.frame_end + 1:
@@ -267,74 +267,26 @@ def stop_playback_restore(scene):
         print("REACHED THE END")
 
 
+
+
+
+############################################################################################
+#Registration :
+############################################################################################
+
+addon_modules = [panel, blockout_undercuts, model_ops,odcutils, modops_props,classes,  crown, margin, bridge, splint,
+                implant, help, flexible_tooth, bracket_placement, denture_base, occlusion, ortho] 
+
+init_classes = [ODC_AddonPreferences, OPENDENTAL_OT_addon_prefs_odc]
+
+
+#Registration :
 def register():
-    # bpy.utils.register_module(__name__)
-    # import the relevant modules
-    # from .
+    for module in addon_modules :
+        module.register()
 
-    from . import (
-        classes,
-        odcutils,
-        blockout_undercuts,
-        crown,
-        margin,
-        bridge,
-        splint,
-        implant,
-        panel,
-        help,
-        flexible_tooth,
-        bracket_placement,
-        denture_base,
-        occlusion,
-        ortho,
-        trim_tool,
-        model_ops,
-    )  # , odcmenus, bgl_utils
-
-    # register them
-    trim_tool.register()
-    panel.register()
-    blockout_undercuts.register()
-    model_ops.register()
-    classes.register()
-    odcutils.register()
-    crown.register()
-    implant.register()
-    margin.register()
-    bridge.register()
-    splint.register()
-    help.register()
-    flexible_tooth.register()
-    bracket_placement.register()
-    denture_base.register()
-    occlusion.register()
-    ortho.register()
-    
-    # odcmenus.register()
-    # bgl_utils.register()
-
-    """
-    found = False 
-    try:
-        imp.find_module("Crypto")
-        # found = True
-    except ImportError:
-        found = False
-        # from .
-    
-    if found:
-        print("found the Crypto module, importing CDT files supported")
-        import cdt
-
-        cdt.register()
-    else:
-        print("The Crypto module was not found! CDT not supported")
-    """
-    # register this module
-    print("REGISERESTED THE ADDON PREFERENCES?")
-    bpy.utils.register_class(ODCAddonPreferences)
-    bpy.utils.register_class(OPENDENTAL_OT_addon_prefs_odc)
+    for cl in init_classes:
+        bpy.utils.register_class(cl)
 
     bpy.app.handlers.load_post.append(load_post_method)
     bpy.app.handlers.save_pre.append(save_pre_method)
@@ -342,54 +294,16 @@ def register():
 
 
 def unregister():
-    # import the relevant modules
-    from . import (
-        classes,
-        odcutils,
-        crown,
-        margin,
-        bridge,
-        splint,
-        panel,
-        implant,
-        flexible_tooth,
-        blockout_undercuts,
-        model_ops,
-        trim_tool,
-    )  # , splint, panel, odcmenus, bgl_utils
 
     bpy.app.handlers.save_pre.remove(save_pre_method)
     bpy.app.handlers.load_post.remove(load_post_method)
     bpy.app.handlers.frame_change_pre.remove(pause_playback)
 
-    # bpy.utils.unregister_module(__name__)
-    bpy.utils.unregister_class(ODCAddonPreferences)
-    bpy.utils.unregister_class(OPENDENTAL_OT_addon_prefs_odc)
+    for cl in init_classes:
+        bpy.utils.unregister_class(cl)
 
-    # unregister them
-    classes.unregister()
-    odcutils.unregister()
-    crown.unregister()
-    margin.unregister()
-    implant.unregister()
-    splint.unregister()
-    bridge.unregister()
-    panel.unregister()
-    flexible_tooth.unregister()
-    blockout_undercuts.unregister()
-    model_ops.unregister()
-    trim_tool.unregister()
-
-    # odcmenus.unregister()
-    # bgl_utils.unregister()
-    """
-    if platform.system() == "Windows" and platform.release() in ["7", "Vista"]:
-        from . import cdt
-
-        cdt.unregister()
-    # unregister this module
-    """
-
+    for module in reversed(addon_modules):
+        module.unregister()
 
 if __name__ == "__main__":
     register()
