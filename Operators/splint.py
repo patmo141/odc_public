@@ -434,7 +434,9 @@ class OPENDENTAL_OT_splint_outline_erase(bpy.types.Operator):
 
         bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Smooth")
         objs = [ob for ob in bpy.context.scene.objects if ob.type in ('METABALL')]
-        bpy.ops.object.delete({"selected_objects": objs})
+        for ob in objs:
+            ob.select_set(True)
+            bpy.ops.object.delete(True)
 
     
         return {"FINISHED"}
