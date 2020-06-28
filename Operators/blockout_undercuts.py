@@ -66,7 +66,7 @@ class OPENDENTAL_OT_survey_model(bpy.types.Operator):
         if bpy.context.selected_objects == []:
 
             message = " Please select the Model to survey !"
-            ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+            ShowMessageBox(message=message, icon="COLORSET_02_VEC")
 
             return {"CANCELLED"}
 
@@ -128,9 +128,10 @@ class OPENDENTAL_OT_survey_model(bpy.types.Operator):
                 
             else :
 
-                Model_Survey = Model
+                Model_Survey = context.active_object
                 mesh_Survey = Model_Survey.data
-                # Remove old silhouette :
+
+                # Remove old silhouette object :
                 for obj in bpy.data.objects :
 
                     if obj.name.endswith(f"_survey({colorprop})_silhouette")  :
@@ -149,7 +150,7 @@ class OPENDENTAL_OT_survey_model(bpy.types.Operator):
             Model_Survey.select_set(True)
             bpy.context.view_layer.objects.active = Model_Survey
 
-            for _ in range(len(Model_Survey.material_slots)) :
+            for _ in range(1,len(Model_Survey.material_slots)) :
                 
                 bpy.ops.object.material_slot_remove()
 
@@ -159,6 +160,8 @@ class OPENDENTAL_OT_survey_model(bpy.types.Operator):
             for mat in bpy.data.materials:
 
                 mat_list.append(mat.name)
+
+            #if  Model.material_slot
 
 
             if not "my_Neutral" in mat_list:
@@ -264,10 +267,10 @@ class OPENDENTAL_OT_survey_model(bpy.types.Operator):
 class OPENDENTAL_OT_blockout_model(bpy.types.Operator):
     """Calculates silhouette of object which surveys convexities AND concavities from the current view axis"""
 
-    bl_idname = "opendental.view_blockout_undercuts"
+    bl_idname = "opendental.blockout_model"
     bl_label = "Blockout Model From View"
     bl_options = {"REGISTER", "UNDO"}
-
+    """
     world = bpy.props.BoolProperty(
         default=True,
         name="Use world coordinate for calculation...almost always should be true.",
@@ -276,7 +279,7 @@ class OPENDENTAL_OT_blockout_model(bpy.types.Operator):
         default=True,
         name="Smooth the outline.  Slightly less acuurate in some situations but more accurate in others.  Default True for best results",
     )
-
+    
     @classmethod
     def poll(cls, context):
         # restoration exists and is in scene
@@ -287,18 +290,14 @@ class OPENDENTAL_OT_blockout_model(bpy.types.Operator):
         else:
             C2 = False
         return C0 and C1 and C2
-
+    """
     def execute(self, context):
-        # settings = get_settings()
-        # dbg = settings.debug
-        ob = context.active_object
-        view = context.space_data.region_3d.view_rotation @ Vector((0, 0, 1))
-
+        
         Modelsprop = bpy.context.scene.UNDERCUTS_props.Modelsprop
         if "Preview" in Modelsprop:
             bmesh_fns.remove_undercuts(context, ob, view, self.world, self.smooth)
         elif "Solid" in Modelsprop:
-            bpy.ops.opendental.view_blockout_undercuts_solid("INVOKE_DEFAULT")
+            bpy.ops.opendental.view_blockout_undercuts_solid()
         return {"FINISHED"}
 
 
@@ -314,75 +313,82 @@ class OPENDENTAL_OT_blockout_model_solid(bpy.types.Operator): #produces watertig
         if bpy.context.selected_objects == []:
 
             message = " Please select the Model to Blockout !"
-            ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+            ShowMessageBox(message=message, icon="COLORSET_02_VEC")
 
             return {"CANCELLED"}
 
         else:
 
-            # ...........................Prepare scene settings : ..............................................
+            if context.object.type != "MESH" :
 
-            # bpy.ops.view3d.snap_cursor_to_center()
-            bpy.context.scene.transform_orientation_slots[0].type = "GLOBAL"
-            bpy.context.scene.tool_settings.transform_pivot_point = "ACTIVE_ELEMENT"
-            bpy.context.scene.tool_settings.use_snap = False
+                message = " Please select a valid Model (mesh object) !"
+                ShowMessageBox(message=message, icon="COLORSET_02_VEC")
 
-            # Get active Object :..........................................................
+                return {"CANCELLED"}
 
-            ob = bpy.context.view_layer.objects.active
+            else :
 
-            ###  PATRICKS TEST ###############################
-            ##################################################
-            if bpy.types.Scene.pre_surveyed == True:
-                world_view = context.scene.UNDERCUTS_view_props.survey_quaternion @ Vector((0,0,1))
-            else:
-                world_view = context.space_data.region_3d.view_rotation @ Vector((0,0,1))
+                # ...........................Prepare scene settings : ..............................................
 
-            local_view = ob.matrix_world.inverted().to_quaternion() @ world_view
-            
-            bpy.context.tool_settings.mesh_select_mode = (False, False, True)
-            for v in ob.data.vertices:
-                v.select = False
-            for ed in ob.data.edges:
-                ed.select = False
-                
-            for f in ob.data.polygons:
-                if f.normal.dot(local_view) < -0.000001:
-                    f.select = True
+                # bpy.ops.view3d.snap_cursor_to_center()
+                bpy.context.scene.transform_orientation_slots[0].type = "GLOBAL"
+                bpy.context.scene.tool_settings.transform_pivot_point = "ACTIVE_ELEMENT"
+                bpy.context.scene.tool_settings.use_snap = False
+
+                # Get active Object :..........................................................
+
+                ob = bpy.context.view_layer.objects.active
+
+                ###  PATRICKS TEST ###############################
+                ##################################################
+                if bpy.types.Scene.pre_surveyed == True:
+                    world_view = context.scene.UNDERCUTS_view_props.survey_quaternion @ Vector((0,0,1))
                 else:
-                    f.select = False
-            
-            bpy.ops.object.mode_set(mode = 'EDIT')
-            
-            bpy.context.scene.transform_orientation_slots[0].type = "LOCAL"
-            extrude_vec = extrude_z * local_view
-            bpy.ops.mesh.extrude_region_move()
-            bpy.ops.transform.translate(
-                value=(extrude_vec[0], extrude_vec[1], extrude_vec[2]), constraint_axis=(False, False, False)
-            )
-            bpy.context.tool_settings.mesh_select_mode = (True, False, False)
-            bpy.ops.object.mode_set(mode = 'OBJECT')
-            bpy.ops.opendental.remesh_model("INVOKE_DEFAULT")
+                    world_view = context.space_data.region_3d.view_rotation @ Vector((0,0,1))
 
-            bpy.types.Scene.pre_surveyed = False
+                local_view = ob.matrix_world.inverted().to_quaternion() @ world_view
+                
+                bpy.context.tool_settings.mesh_select_mode = (False, False, True)
+                for v in ob.data.vertices:
+                    v.select = False
+                for ed in ob.data.edges:
+                    ed.select = False
+                    
+                for f in ob.data.polygons:
+                    if f.normal.dot(local_view) < -0.000001:
+                        f.select = True
+                    else:
+                        f.select = False
+                
+                bpy.ops.object.mode_set(mode = 'EDIT')
+                
+                bpy.context.scene.transform_orientation_slots[0].type = "LOCAL"
+                extrude_vec = extrude_z * local_view
+                bpy.ops.mesh.extrude_region_move()
+                bpy.ops.transform.translate(
+                    value=(extrude_vec[0], extrude_vec[1], extrude_vec[2]), constraint_axis=(False, False, False)
+                )
+                bpy.context.tool_settings.mesh_select_mode = (True, False, False)
+                bpy.ops.object.mode_set(mode = 'OBJECT')
+                bpy.ops.opendental.remesh_model("INVOKE_DEFAULT")
 
-            # Rename Model_Survey :
-            
-            colorprop = context.scene.UNDERCUTS_view_props.colorprop
+                bpy.types.Scene.pre_surveyed = False
 
-            if "_solid_base" in ob.name :
-                ob_name = ob.name
-                ob.name = ob_name.replace("_solid_base", "_")
+                # Rename Model_blocked :
+                
+                colorprop = context.scene.UNDERCUTS_view_props.colorprop
 
-            if f"_survey({colorprop})" in ob.name :
-                ob_name = ob.name
-                ob.name = ob_name.replace(f"_survey({colorprop})", "_")
+                if "_solid_base" in ob.name :
+                    ob_name = ob.name
+                    ob.name = ob_name.replace("_solid_base", "_")
 
-            ob.name += "blocked"
-            ob.data.name = f"{ob.name}_mesh"
+                if f"_survey({colorprop})" in ob.name :
+                    ob_name = ob.name
+                    ob.name = ob_name.replace(f"_survey({colorprop})", "_")
 
+                ob.name += "blocked"
+                ob.data.name = f"{ob.name}_mesh"
 
-        
         return {'FINISHED'}
         ### END PATRICK"S TEST   #########################
         ###################################################

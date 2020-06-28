@@ -40,7 +40,7 @@ class OPENDENTAL_OT_join_models(bpy.types.Operator):
         if len(bpy.context.selected_objects) < 2:
             
             message = " Please select at least 2 objects to join !"
-            ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+            ShowMessageBox(message=message, icon="COLORSET_02_VEC")
 
             return {"CANCELLED"}
 
@@ -64,7 +64,7 @@ class OPENDENTAL_OT_separate_models(bpy.types.Operator):
         if bpy.context.selected_objects == []:
 
             message = " Please select the Model to separate!"
-            ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+            ShowMessageBox(message=message, icon="COLORSET_02_VEC")
 
             return {"CANCELLED"}
 
@@ -104,7 +104,7 @@ class OPENDENTAL_OT_parent_models(bpy.types.Operator):
         if len(selected_objects) < 2 or not parent in selected_objects :
             
             message = " Please select at least 2 objects to Link !"
-            ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+            ShowMessageBox(message=message, icon="COLORSET_02_VEC")
 
             return {"CANCELLED"}
 
@@ -113,7 +113,7 @@ class OPENDENTAL_OT_parent_models(bpy.types.Operator):
            bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
            bpy.ops.object.select_all(action='DESELECT')
            parent.select_set(True)
-           bpy.ops.object.hide_view_set(unselected=True)
+           #bpy.ops.object.hide_view_set(unselected=True)
            
            return {"FINISHED"}
 
@@ -134,7 +134,7 @@ class OPENDENTAL_OT_unparent_models(bpy.types.Operator):
         if not selected_objects :
             
             message = " Please select Model to UnLink !"
-            ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+            ShowMessageBox(message=message, icon="COLORSET_02_VEC")
 
             return {"CANCELLED"}
 
@@ -157,27 +157,36 @@ class OPENDENTAL_OT_align_to_front(bpy.types.Operator):
 
     def execute(self, context):
 
-        Model = bpy.context.view_layer.objects.active
+        if not bpy.context.selected_objects :
+            
+            message = " Please select Model to UnLink !"
+            ShowMessageBox(message=message, icon="COLORSET_02_VEC")
 
-        # get object rotation mode and invert it :
+            return {"CANCELLED"}
 
-        rot_mod = Model.rotation_mode  
+        else:
 
-        # Get VIEW_rotation matrix  :
+            Model = bpy.context.view_layer.objects.active
 
-        view3d_rot_matrix = context.space_data.region_3d.view_rotation.to_matrix().to_4x4()
+            # get object rotation mode and invert it :
 
-        # create a 90 degrees arround X_axis Euler :
-        Eul_90x = Euler((radians(90), 0, 0), rot_mod)
+            rot_mod = Model.rotation_mode  
 
-        # Euler to mattrix 4x4 :
-        Eul_90x_matrix = Eul_90x.to_matrix().to_4x4()
+            # Get VIEW_rotation matrix  :
 
-        # Rotate Model :
-        Model.matrix_world = Eul_90x_matrix @ view3d_rot_matrix.inverted() @ Model.matrix_world
-        bpy.ops.view3d.view_all(center=True)
-        bpy.ops.view3d.view_axis(type="FRONT")
-        bpy.ops.wm.tool_set_by_id(name="builtin.cursor")
+            view3d_rot_matrix = context.space_data.region_3d.view_rotation.to_matrix().to_4x4()
+
+            # create a 90 degrees arround X_axis Euler :
+            Eul_90x = Euler((radians(90), 0, 0), rot_mod)
+
+            # Euler to mattrix 4x4 :
+            Eul_90x_matrix = Eul_90x.to_matrix().to_4x4()
+
+            # Rotate Model :
+            Model.matrix_world = Eul_90x_matrix @ view3d_rot_matrix.inverted() @ Model.matrix_world
+            bpy.ops.view3d.view_all(center=True)
+            bpy.ops.view3d.view_axis(type="FRONT")
+            bpy.ops.wm.tool_set_by_id(name="builtin.cursor")
 
         return {"FINISHED"}
 
@@ -213,7 +222,7 @@ class OPENDENTAL_OT_center_Model(bpy.types.Operator):
                     bpy.ops.object.origin_set(type='ORIGIN_CURSOR', center='MEDIAN')
                     bpy.ops.view3d.snap_cursor_to_center()
                     bpy.ops.view3d.snap_selected_to_cursor(use_offset=True)
-                    bpy.ops.object.origin_set(type='ORIGIN_CURSOR', center='MEDIAN')
+                    bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='MEDIAN')
 
             bpy.ops.view3d.view_all(center=True)
             #bpy.ops.wm.tool_set_by_id(name="builtin.cursor")
@@ -237,7 +246,7 @@ class OPENDENTAL_OT_center_Model(bpy.types.Operator):
         if bpy.context.selected_objects == []:
 
             message = " Please select Model !"
-            ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+            ShowMessageBox(message=message, icon="COLORSET_02_VEC")
 
             return {"CANCELLED"}
 
@@ -295,12 +304,12 @@ class OPENDENTAL_OT_decimate_model(bpy.types.Operator):
 
     def execute(self, context):
 
-        ratio = 0.5
+        decimate_ratio = round(bpy.context.scene.ODC_modops_props.decimate_ratio, 2)
 
         if bpy.context.selected_objects == []:
 
             message = " Please select Model !"
-            ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+            ShowMessageBox(message=message, icon="COLORSET_02_VEC")
 
             return {"CANCELLED"}
 
@@ -310,7 +319,7 @@ class OPENDENTAL_OT_decimate_model(bpy.types.Operator):
 
             bpy.ops.object.mode_set(mode="OBJECT")
             bpy.ops.object.modifier_add(type="DECIMATE")
-            bpy.context.object.modifiers["Decimate"].ratio = ratio
+            bpy.context.object.modifiers["Decimate"].ratio = decimate_ratio
             bpy.ops.object.modifier_apply(apply_as="DATA", modifier="Decimate")
 
             return {"FINISHED"}
@@ -331,7 +340,7 @@ class OPENDENTAL_OT_fill(bpy.types.Operator):
         if bpy.context.selected_objects == []:
 
             message = " Please select Model !"
-            ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+            ShowMessageBox(message=message, icon="COLORSET_02_VEC")
 
             return {"CANCELLED"}
 
@@ -365,7 +374,7 @@ class OPENDENTAL_OT_retopo_smooth(bpy.types.Operator):
         if bpy.context.selected_objects == []:
 
             message = " Please select Model !"
-            ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+            ShowMessageBox(message=message, icon="COLORSET_02_VEC")
 
             return {"CANCELLED"}
 
@@ -413,7 +422,7 @@ class OPENDENTAL_OT_clean_model(bpy.types.Operator):
         if bpy.context.selected_objects == []:
 
             message = " Please select Model !"
-            ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+            ShowMessageBox(message=message, icon="COLORSET_02_VEC")
 
             return {"CANCELLED"}
 
@@ -837,6 +846,21 @@ class OPENDENTAL_OT_make_curve(bpy.types.Operator):
 
             if event.value == ("PRESS"):
 
+                cutting_tool = bpy.data.objects["Cutting_curve"]
+                bpy.ops.object.mode_set(mode="OBJECT")
+
+                bpy.ops.object.select_all(action="DESELECT")
+                cutting_tool.select_set(True)
+                bpy.context.view_layer.objects.active = cutting_tool
+                bpy.ops.object.delete(use_global=False, confirm=False)
+
+                Model_name = context.scene.ODC_modops_props.cutting_target
+                Model = bpy.data.objects[Model_name]
+
+                bpy.ops.object.select_all(action="DESELECT")
+                Model.select_set(True)
+                bpy.context.view_layer.objects.active = Model
+
                 bpy.ops.wm.tool_set_by_id(name="builtin.select")
                 bpy.context.space_data.overlay.show_outline_selected = True
             
@@ -849,7 +873,7 @@ class OPENDENTAL_OT_make_curve(bpy.types.Operator):
         if bpy.context.selected_objects == []:
 
             message = " Please select Model !"
-            ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+            ShowMessageBox(message=message, icon="COLORSET_02_VEC")
 
             return {"CANCELLED"}
 
@@ -1022,7 +1046,7 @@ class OPENDENTAL_OT_trim_model(bpy.types.Operator):
         if bpy.context.selected_objects == []:
 
             message = " Please select Model !"
-            ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+            ShowMessageBox(message=message, icon="COLORSET_02_VEC")
 
             return {"CANCELLED"}
 
@@ -1150,7 +1174,7 @@ class OPENDENTAL_OT_square_cut(bpy.types.Operator):
         if bpy.context.selected_objects == []:
 
             message = " Please select Model !"
-            ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+            ShowMessageBox(message=message, icon="COLORSET_02_VEC")
 
             return {"CANCELLED"}
 
@@ -1204,66 +1228,69 @@ class OPENDENTAL_OT_square_cut_confirm(bpy.types.Operator):
         if bpy.context.selected_objects == []:
 
             message = " Please select Model !"
-            ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+            ShowMessageBox(message=message, icon="COLORSET_02_VEC")
 
             return {"CANCELLED"}
 
         else:
+            try :
+                cutting_mode = context.scene.ODC_modops_props.cutting_mode
+                
+                bpy.context.tool_settings.mesh_select_mode = (True, False, False)
+                bpy.ops.wm.tool_set_by_id(name="builtin.select")
+                bpy.ops.object.mode_set(mode="OBJECT")
+                frame = bpy.data.objects["my_frame_cutter"]
+                
+                bpy.ops.object.select_all(action="DESELECT")
+                frame.select_set(True)
+                bpy.context.view_layer.objects.active = frame
+                bpy.ops.object.select_all(action='INVERT')
+                Model = bpy.context.selected_objects[0]
+                bpy.context.view_layer.objects.active = Model
 
-            cutting_mode = context.scene.ODC_modops_props.cutting_mode
-            
-            bpy.context.tool_settings.mesh_select_mode = (True, False, False)
-            bpy.ops.wm.tool_set_by_id(name="builtin.select")
-            bpy.ops.object.mode_set(mode="OBJECT")
-            frame = bpy.data.objects["my_frame_cutter"]
-            
-            bpy.ops.object.select_all(action="DESELECT")
-            frame.select_set(True)
-            bpy.context.view_layer.objects.active = frame
-            bpy.ops.object.select_all(action='INVERT')
-            Model = bpy.context.selected_objects[0]
-            bpy.context.view_layer.objects.active = Model
+                # Make Model normals consitent :
 
-            # Make Model normals consitent :
+                bpy.ops.object.mode_set(mode="EDIT")
+                bpy.ops.mesh.select_all(action='SELECT')
+                bpy.ops.mesh.normals_make_consistent(inside=False)
+                bpy.ops.mesh.select_all(action='DESELECT')
+                bpy.ops.object.mode_set(mode="OBJECT")
+                
+                # ....Add undo history point...:
+                bpy.ops.ed.undo_push()
 
-            bpy.ops.object.mode_set(mode="EDIT")
-            bpy.ops.mesh.select_all(action='SELECT')
-            bpy.ops.mesh.normals_make_consistent(inside=False)
-            bpy.ops.mesh.select_all(action='DESELECT')
-            bpy.ops.object.mode_set(mode="OBJECT")
-            
-            # ....Add undo history point...:
-            bpy.ops.ed.undo_push()
+                # Add Boolean Modifier :
+                bpy.ops.object.select_all(action="DESELECT")
+                Model.select_set(True)
+                bpy.context.view_layer.objects.active = Model
 
-            # Add Boolean Modifier :
-            bpy.ops.object.select_all(action="DESELECT")
-            Model.select_set(True)
-            bpy.context.view_layer.objects.active = Model
+                bpy.ops.object.modifier_add(type='BOOLEAN')
+                bpy.context.object.modifiers["Boolean"].show_viewport = False
+                bpy.context.object.modifiers["Boolean"].operation = 'DIFFERENCE'
+                bpy.context.object.modifiers["Boolean"].object = frame
 
-            bpy.ops.object.modifier_add(type='BOOLEAN')
-            bpy.context.object.modifiers["Boolean"].show_viewport = False
-            bpy.context.object.modifiers["Boolean"].operation = 'DIFFERENCE'
-            bpy.context.object.modifiers["Boolean"].object = frame
+                # Apply boolean modifier :
+                if cutting_mode == "Cut inner" :
+                    bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Boolean")
 
-            # Apply boolean modifier :
-            if cutting_mode == "Cut inner" :
-                bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Boolean")
+                if cutting_mode == "Keep inner" :
+                    bpy.context.object.modifiers["Boolean"].operation = 'INTERSECT'
+                    bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Boolean")
 
-            if cutting_mode == "Keep inner" :
-                bpy.context.object.modifiers["Boolean"].operation = 'INTERSECT'
-                bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Boolean")
+                # Delete resulting loose geometry :
 
-            # Delete resulting loose geometry :
+                bpy.ops.object.mode_set(mode="EDIT")
+                bpy.ops.mesh.select_all(action="SELECT")
+                bpy.ops.mesh.delete_loose()
+                bpy.ops.mesh.select_all(action="DESELECT")
+                bpy.ops.object.mode_set(mode="OBJECT")
+                
+                bpy.ops.object.select_all(action="DESELECT")
+                frame.select_set(True)
+                bpy.context.view_layer.objects.active = frame
 
-            bpy.ops.object.mode_set(mode="EDIT")
-            bpy.ops.mesh.select_all(action="SELECT")
-            bpy.ops.mesh.delete_loose()
-            bpy.ops.mesh.select_all(action="DESELECT")
-            bpy.ops.object.mode_set(mode="OBJECT")
-            
-            bpy.ops.object.select_all(action="DESELECT")
-            frame.select_set(True)
-            bpy.context.view_layer.objects.active = frame
+            except Exception :
+                pass
             
             return {"FINISHED"}
 
@@ -1280,23 +1307,27 @@ class OPENDENTAL_OT_square_cut_exit(bpy.types.Operator):
     def execute(self, context) :
 
         # Delete frame :
+        try :
 
-        frame = bpy.data.objects["my_frame_cutter"]
-        bpy.ops.object.select_all(action="DESELECT")
-        frame.select_set(True)
+            frame = bpy.data.objects["my_frame_cutter"]
+            bpy.ops.object.select_all(action="DESELECT")
+            frame.select_set(True)
 
-        bpy.ops.object.select_all(action='INVERT')
-        Model = bpy.context.selected_objects[0]
+            bpy.ops.object.select_all(action='INVERT')
+            Model = bpy.context.selected_objects[0]
 
-        bpy.ops.object.select_all(action="DESELECT")
-        frame.select_set(True)
-        bpy.context.view_layer.objects.active = frame
+            bpy.ops.object.select_all(action="DESELECT")
+            frame.select_set(True)
+            bpy.context.view_layer.objects.active = frame
 
-        bpy.ops.object.delete(use_global=False, confirm=False)
+            bpy.ops.object.delete(use_global=False, confirm=False)
 
-        bpy.ops.object.select_all(action="DESELECT")
-        Model.select_set(True)
-        bpy.context.view_layer.objects.active = Model
+            bpy.ops.object.select_all(action="DESELECT")
+            Model.select_set(True)
+            bpy.context.view_layer.objects.active = Model
+
+        except Exception :
+            pass
         
         return {"FINISHED"}
 
@@ -1313,16 +1344,16 @@ class OPENDENTAL_OT_model_base(bpy.types.Operator):
     bl_label = "Create a solid base Dental Model."
     bl_options = {"REGISTER", "UNDO"}
 
-    show_box : bpy.props.BoolProperty(description="show or not the popup message box ", default=True)
-
     def execute(self, context):
 
         base_height_prop = context.scene.ODC_modops_props.base_height
         base_height = round(base_height_prop, 2)
+        show_box = bpy.context.scene.ODC_modops_props.show_box
+
         if bpy.context.selected_objects == []:
 
             message = " Please select Model !"
-            ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+            ShowMessageBox(message=message, icon="COLORSET_02_VEC")
 
             return {"CANCELLED"}
 
@@ -1412,9 +1443,9 @@ class OPENDENTAL_OT_model_base(bpy.types.Operator):
 
             for v in selected_verts :
                 global_v_co = obj_mx @ v.co 
-                v.co = obj_mx.inverted() @ Vector((global_v_co[0], global_v_co[1], min_z - base_height))
+                v.co = obj_mx.inverted() @ Vector((global_v_co[0], global_v_co[1], min_z - base_height - 3))
             #Store Base location :
-            context.scene.ODC_modops_props.base_location_prop = (0,0,min_z - base_height)
+            context.scene.ODC_modops_props.base_location_prop = (0,0,min_z - base_height-3)
             # fill base :
             bpy.ops.object.mode_set(mode="EDIT")
             bpy.ops.mesh.fill(use_beauty=False)
@@ -1451,14 +1482,12 @@ class OPENDENTAL_OT_model_base(bpy.types.Operator):
             bpy.ops.object.mode_set(mode="OBJECT")
             verts = Model_base.data.vertices 
             selected_verts =  [v for v in verts if v.select] 
-            print(f'selected verts = {len(selected_verts)}')        
-
             
             if not selected_verts :
 
                 bpy.context.object.show_name = True
 
-                if self.show_box == True :
+                if show_box == True :
                     message = " Model Base created !"
                     ShowMessageBox(message=message, icon="COLORSET_03_VEC")
 
@@ -1466,9 +1495,6 @@ class OPENDENTAL_OT_model_base(bpy.types.Operator):
                 return {"FINISHED"}
 
             else :
-
-                message = " Operation failed ! Please change view orientation and retry (clean trimed Model)!"
-                ShowMessageBox(message=message, icon="COLORSET_01_VEC")
 
                 bpy.ops.object.mode_set(mode="OBJECT")
 
@@ -1485,6 +1511,10 @@ class OPENDENTAL_OT_model_base(bpy.types.Operator):
 
                 bpy.ops.object.hide_view_set(unselected=True)
 
+                if show_box == True :
+                    message = " Operation failed ! Please change view orientation and retry (clean trimed Model)!"
+                    ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+
             return {"FINISHED"}
 
 #######################################################################################
@@ -1497,14 +1527,14 @@ class OPENDENTAL_OT_hollow_model(bpy.types.Operator):
     bl_label = "Hollow Model"
     bl_options = {"REGISTER", "UNDO"}
 
-    show_box : bpy.props.BoolProperty(description="show or not the popup message box ", default=True)
-
     def execute(self, context) :
+
+        show_box = bpy.context.scene.ODC_modops_props.show_box
 
         if bpy.context.selected_objects == []:
 
             message = " Please select Model !"
-            ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+            ShowMessageBox(message=message, icon="COLORSET_02_VEC")
 
             return {"CANCELLED"}
 
@@ -1648,20 +1678,16 @@ class OPENDENTAL_OT_hollow_model(bpy.types.Operator):
                 bpy.ops.object.delete(use_global=False, confirm=False)
                 
 
-                # Hide everything but hollow model :
+                # Hide everything but hollow model + Model :
 
                 bpy.ops.object.select_all(action="DESELECT")
+                Model.select_set(True)
                 Model_hollow.select_set(True)
                 bpy.context.view_layer.objects.active = Model_hollow
-
                 bpy.ops.object.shade_flat()
-
                 bpy.ops.object.hide_view_set(unselected=True)
-
-                bpy.ops.view3d.view_all(center=True)
-
            
-                if self.show_box == True :
+                if show_box == True :
 
                     message = "You can trim hollowed Model using cutting tools !"
                     ShowMessageBox(message=message, icon="COLORSET_03_VEC")
@@ -1681,42 +1707,50 @@ class OPENDENTAL_OT_solid_hollow_models(bpy.types.Operator):
         if bpy.context.selected_objects == []:
 
             message = " Please select Model !"
-            ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+            ShowMessageBox(message=message, icon="COLORSET_02_VEC")
 
             return {"CANCELLED"}
 
         else:
-            #start counter :
+            # Start counter :
             start = time.perf_counter()
 
-            bpy.ops.opendental.model_base('EXEC_DEFAULT', show_box=False)
-            bpy.context.object.show_name = True
+            bpy.context.scene.ODC_modops_props.show_box = False
 
+            bpy.ops.opendental.model_base()
+            bpy.context.object.show_name = True
             Model_solid_base = bpy.context.active_object
 
-            bpy.ops.opendental.hollow_model('EXEC_DEFAULT', show_box=False)
+            bpy.ops.opendental.hollow_model()
             bpy.context.object.show_name = True
-
             Model_hollow = bpy.context.active_object
 
-            ####### Flip Model_hollow to top view #######
-
+            # flip/Unflip matrix :
             view_rotation = context.space_data.region_3d.view_rotation
             view3d_rot_matrix = view_rotation.to_matrix().to_4x4()
 
             flip_matrix = view3d_rot_matrix.inverted()
             unflip_matrix = view3d_rot_matrix
 
-            Model_hollow.matrix_world = flip_matrix @ Model_hollow.matrix_world
-
-            ####### Trim Model_hollow using bisect tool #########
+            # Get location values :
             base_location = context.scene.ODC_modops_props.base_location_prop
-            base_height_prop = context.scene.ODC_modops_props.base_height
-            base_height = round(base_height_prop, 2)
 
-            plane_z_loc = base_location[2] + base_height - 2
+            # Cut plane location :
+            plane_z_loc = base_location[2] + 3
             plane_loc = (0, 0, plane_z_loc)
 
+
+            ##################### Cut Model_hollow to height : #################################
+
+            # Get Model_hollow :(Just we ensure)
+            bpy.ops.object.select_all(action="DESELECT")
+            Model_hollow.select_set(True)
+            bpy.context.view_layer.objects.active = Model_hollow
+
+            # Flip Model_hollow to top view :
+            Model_hollow.matrix_world = flip_matrix @ Model_hollow.matrix_world
+
+            # Trim Model_hollow using bisect tool :
             bpy.ops.object.mode_set(mode="EDIT")
             bpy.ops.mesh.select_all(action='SELECT')
 
@@ -1725,26 +1759,38 @@ class OPENDENTAL_OT_solid_hollow_models(bpy.types.Operator):
             bpy.ops.mesh.select_all(action='DESELECT')
             bpy.ops.object.mode_set(mode="OBJECT")
 
-
-
             # Model_hollow matrix_world reset :
-
             Model_hollow.matrix_world = unflip_matrix @ Model_hollow.matrix_world
-
             Model_hollow.name += '_base'
 
-            # Select Model solid base :
 
-            bpy.ops.object.hide_view_clear()
+            ################## Cut Model_solid_base to height ########################### :
+            # Get Model_solid_base :
             bpy.ops.object.select_all(action="DESELECT")
-            Model_hollow.select_set(True)
             Model_solid_base.select_set(True)
-            bpy.ops.object.hide_view_set(unselected=True)
-            Model_hollow.select_set(False)
+            bpy.context.view_layer.objects.active = Model_solid_base
+
+            # Flip Model_solid_base to top view :
+            Model_solid_base.matrix_world = flip_matrix @ Model_solid_base.matrix_world
+            
+            # Trim Model_solid_base using bisect tool :
+            bpy.ops.object.mode_set(mode="EDIT")
+            bpy.ops.mesh.select_all(action='SELECT')
+
+            bpy.ops.mesh.bisect(plane_co=plane_loc, plane_no=(0,0,-1), use_fill=True, clear_inner=False, clear_outer=True)
+
+            bpy.ops.mesh.select_all(action='DESELECT')
+            bpy.ops.object.mode_set(mode="OBJECT")
+
+            # Model_solid_base matrix_world reset :
+            Model_solid_base.matrix_world = unflip_matrix @ Model_solid_base.matrix_world
+
+
+            # Select Model solid base :
+            bpy.ops.object.select_all(action="DESELECT")
+            Model_solid_base.select_set(True)
             bpy.context.view_layer.objects.active = Model_solid_base
             
-
-
             #stop counter :
             finish = time.perf_counter()
 
@@ -1752,7 +1798,7 @@ class OPENDENTAL_OT_solid_hollow_models(bpy.types.Operator):
 
             message = " Model solide and hollow base created !"
             ShowMessageBox(message=message, icon="COLORSET_03_VEC")
-
+            
             return {"FINISHED"}
 
            
@@ -1771,7 +1817,7 @@ class OPENDENTAL_OT_remesh_model(bpy.types.Operator):
         if bpy.context.selected_objects == []:
 
             message = " Please select Model !"
-            ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+            ShowMessageBox(message=message, icon="COLORSET_02_VEC")
 
             return {"CANCELLED"}
 
@@ -1806,7 +1852,7 @@ class OPENDENTAL_OT_model_color(bpy.types.Operator):
         if bpy.context.selected_objects == []:
 
             message = " Please select Model !"
-            ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+            ShowMessageBox(message=message, icon="COLORSET_02_VEC")
 
             return {"CANCELLED"}
 
@@ -1843,7 +1889,7 @@ class OPENDENTAL_OT_model_remove_color(bpy.types.Operator):
         if bpy.context.selected_objects == []:
 
             message = " Please select Model !"
-            ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+            ShowMessageBox(message=message, icon="COLORSET_02_VEC")
 
             return {"CANCELLED"}
 
@@ -1873,7 +1919,7 @@ class OPENDENTAL_OT_add_offset(bpy.types.Operator):
         if bpy.context.selected_objects == []:
 
             message = " Please select Model !"
-            ShowMessageBox(message=message, icon="COLORSET_01_VEC")
+            ShowMessageBox(message=message, icon="COLORSET_02_VEC")
 
             return {"CANCELLED"}
 

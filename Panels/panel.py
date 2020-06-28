@@ -212,7 +212,7 @@ class OPENDENTAL_PT_model_operations(bpy.types.Panel):
         
 
         #align Model to front :
-
+        layout.row().separator()
         row = layout.row()
         row.label(text="Align Models to front", icon=yellow_point)
         row = layout.row()
@@ -222,12 +222,17 @@ class OPENDENTAL_PT_model_operations(bpy.types.Panel):
         
 
         # Model Repair Tools :
-
+        layout.row().separator()
         row = layout.row()
         row.label(text="Model Repair Tools", icon=yellow_point)
-        
-        row = layout.row()
+
+        split = layout.split(factor=2/3, align=False)               
+        col = split.column()
+
+        row = col.row(align=True)
         row.operator("opendental.decimate_model", text="Decimate Model", icon="MOD_DECIM")
+        row.prop(modops_props, "decimate_ratio", text="")
+        row = col.row()
         row.operator("opendental.fill", text="Fill", icon="OUTLINER_OB_LIGHTPROBE")
         row.operator("opendental.retopo_smooth", text="Retopo Smooth", icon="BRUSH_SMOOTH")
         try :
@@ -236,11 +241,14 @@ class OPENDENTAL_PT_model_operations(bpy.types.Panel):
                 row.operator("sculpt.sample_detail_size", text = '', icon="EYEDROPPER")
         except Exception :
             pass
-        row = layout.row()
+
+        col = split.column()
+        row = col.row()
+        row.scale_y = 2
         row.operator("opendental.clean_model", text="Clean Model", icon="BRUSH_DATA")
 
         #Cutting tools :
-        
+        layout.row().separator()
         cutting_tool = modops_props.cutting_tool
 
         # Title : Cutting Tools :
@@ -275,8 +283,8 @@ class OPENDENTAL_PT_model_operations(bpy.types.Panel):
             row.operator("opendental.square_cut_confirm")
             row.operator("opendental.square_cut_exit")
 
-
         # Model Base  :
+        layout.row().separator()
         row = layout.row()
         row.label(text="Model Base Tools", icon=yellow_point)
         row = layout.row()
@@ -290,6 +298,7 @@ class OPENDENTAL_PT_model_operations(bpy.types.Panel):
         row.operator("opendental.remesh_model", text="Remesh Model", icon="VIEW_ORTHO")
         
         # Model color :
+        layout.row().separator()
         row = layout.row()
         row.label(text="Model Color", icon=yellow_point)
 
@@ -316,23 +325,31 @@ class OPENDENTAL_PT_model_operations(bpy.types.Panel):
         row.prop(props, "colorprop", text="")
         row.operator("opendental.view_silhouette_survey", text="Survey Model Undercuts")
 
+        split = layout.split(factor=2/3, align=False)               
+        col = split.column()
+
+        row = col.row()
+        row.label(text="Select Algorithm")
+        row = col.row()
+        props = context.scene.UNDERCUTS_props
+        row.prop(props, "Modelsprop", text="")
+
+        col = split.column()
+        row = col.row()
+        row.scale_y = 2
+        row.operator("opendental.blockout_model", text="Create Blockout")
+
+        """
         row = layout.row()
         props = context.scene.UNDERCUTS_props
         # Modelsprop = props.Modelsprop
         row.prop(props, "Modelsprop", text="Select Algorithm")
         row.operator("opendental.view_blockout_undercuts", text="Create Blockout")
-
+        """
         #Model offset button+prop :
+        row = layout.row()
         row.prop(modops_props, "offset", text="")
         row.operator("opendental.add_offset", text="Offset")
-        
-
-
-
-
-
-        # row = layout.row()
-        # row.operator("opendental.view_blockout_undercuts", text = "Blockout Model Undercuts")
 
 
 class OPENDENTAL_PT_ODCTeeth(bpy.types.Panel):
