@@ -1,15 +1,17 @@
 #utils by PRM
+#python imports :
+import math, os, time
+from math import fmod
+
+#Blender imports :
 import bpy
 import bgl
 import blf
-import math
-import time
-import os
-
-from math import fmod
 from mathutils.geometry import intersect_line_line_2d
 from mathutils import Vector, Matrix
 from bpy_extras.image_utils import load_image
+
+#Addon imports :
 
 
 def scale_vec_mult(a,b):
@@ -285,9 +287,4 @@ def blf_text_wrap(string, wrap, font, size, dpi, x, y):
         blf.position(font,x,y-i*dimension[1],0)
         blf.draw(font, string[i*wrap:(i+1)*wrap])
 
-def register():  
-    print('register utils')
-def unregister():     
-    print('unregister utils')
-if __name__ == "__main__":
-    register()          
+        
