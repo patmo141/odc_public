@@ -1686,6 +1686,7 @@ class OPENDENTAL_OT_hollow_model(bpy.types.Operator):
                 bpy.context.view_layer.objects.active = Model_hollow
                 bpy.ops.object.shade_flat()
                 bpy.ops.object.hide_view_set(unselected=True)
+                Model.select_set(False)
            
                 if show_box == True :
 
@@ -1792,6 +1793,9 @@ class OPENDENTAL_OT_solid_hollow_models(bpy.types.Operator):
             Model_solid_base.select_set(True)
             bpy.context.view_layer.objects.active = Model_solid_base
             
+            #Restore base_height user value :
+            context.scene.ODC_modops_props.base_height -= 3
+
             #stop counter :
             finish = time.perf_counter()
 
