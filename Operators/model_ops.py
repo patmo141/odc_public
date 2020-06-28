@@ -1443,9 +1443,9 @@ class OPENDENTAL_OT_model_base(bpy.types.Operator):
 
             for v in selected_verts :
                 global_v_co = obj_mx @ v.co 
-                v.co = obj_mx.inverted() @ Vector((global_v_co[0], global_v_co[1], min_z - base_height - 3))
+                v.co = obj_mx.inverted() @ Vector((global_v_co[0], global_v_co[1], min_z - base_height))
             #Store Base location :
-            context.scene.ODC_modops_props.base_location_prop = (0,0,min_z - base_height-3)
+            context.scene.ODC_modops_props.base_location_prop = (0,0,min_z - base_height)
             # fill base :
             bpy.ops.object.mode_set(mode="EDIT")
             bpy.ops.mesh.fill(use_beauty=False)
@@ -1716,7 +1716,8 @@ class OPENDENTAL_OT_solid_hollow_models(bpy.types.Operator):
             start = time.perf_counter()
 
             bpy.context.scene.ODC_modops_props.show_box = False
-
+            context.scene.ODC_modops_props.base_height += 3
+            
             bpy.ops.opendental.model_base()
             bpy.context.object.show_name = True
             Model_solid_base = bpy.context.active_object
