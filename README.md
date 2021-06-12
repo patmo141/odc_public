@@ -7,6 +7,6 @@ Current features include:
 - undercut surveying, undercut blockout
 - splint shell making
 
-ODC v2.0 build on the predecesor, ODC, originally developed by Dr. Patrick Moore. The new ODC v2.0 for the latest Blender release is the conintued work of Dr. Issam Dakir DMD, Dr. Raúl Ruiz Vera DDS, Dr. Georgi Talmazov DDS, and Dr. Patrick Moore DMD.
+ODC v2.0 build on the predecesor, ODC, originally developed by Dr. Patrick Moore. The new ODC v2.0 for the latest Blender release is the continued work of Dr. Issam Dakir DMD, Dr. Raúl Ruiz Vera DDS, Dr. Georgi Talmazov DDS, and Dr. Patrick Moore DMD.
 
 Some tutorial videos can be found on our youtube channel: https://www.youtube.com/playlist?list=PLXpbHlzIjUBQGTrnWkcbROYL656YTEfO8
